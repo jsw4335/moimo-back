@@ -170,7 +170,6 @@ export class UsersService {
       refreshToken,
       user: {
         email: user.email,
-        provider_id: user.providerId ?? null, // 구글 로그인 시 저장된 값, 없으면 null
       },
     };
   }

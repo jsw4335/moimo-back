@@ -31,4 +31,10 @@ export class UsersController {
   async findOne(@Param('id') id: string) {
     return await this.usersService.findOne(Number(id));
   }
+
+  //로그인
+  @Post('login')
+  async login(@Body() body: { email: string; password: string }) {
+    return this.usersService.login(body.email, body.password);
+  }
 }

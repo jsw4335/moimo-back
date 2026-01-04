@@ -82,6 +82,7 @@ model Meeting {
   description     String   @db.Text
   maxParticipants Int      @map("max_participants")
   meetingDate     DateTime @map("meeting_date")
+  address         String  @db.Text
   latitude        Float
   longitude       Float
   

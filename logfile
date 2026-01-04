@@ -81,3 +81,181 @@
 	"C:/postgresql-16.11-2/data/pg_hba.conf" ÆÄÀÏÀÇ 117¹øÂ° ÁÙ¿¡ ÁöÁ¤ÇÑ ÀÎÁõ ¼³Á¤ÀÌ »ç¿ëµÊ: "host    all             all             ::1/128                 md5"
 2026-01-02 19:09:10.713 KST [19476] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: time
 2026-01-02 19:09:11.280 KST [19476] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 6°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.541 s, µ¿±âÈ­½Ã°£: 0.013 s, ÀüÃ¼½Ã°£: 0.567 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 6, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.003 s; ½ÇÁ¦ÀÛ¾÷·®: 1 kB, ¿¹»óÇÑÀÛ¾÷·®: 1 kB; lsn=0/36972F8, redo lsn=0/36972C0
+2026-01-03 01:59:10.252 KST [19476] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: immediate force wait time
+2026-01-03 01:59:10.282 KST [19476] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 5°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.004 s, µ¿±âÈ­½Ã°£: 0.011 s, ÀüÃ¼½Ã°£: 0.031 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 5, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.003 s; ½ÇÁ¦ÀÛ¾÷·®: 4748 kB, ¿¹»óÇÑÀÛ¾÷·®: 4748 kB; lsn=0/3B3A530, redo lsn=0/3B3A4F8
+2026-01-03 01:59:10.985 KST [19476] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: immediate force wait
+2026-01-03 01:59:11.015 KST [19476] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 9°³(0.1%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.003 s, µ¿±âÈ­½Ã°£: 0.011 s, ÀüÃ¼½Ã°£: 0.031 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 5, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.003 s; ½ÇÁ¦ÀÛ¾÷·®: 4843 kB, ¿¹»óÇÑÀÛ¾÷·®: 4843 kB; lsn=0/3FF5368, redo lsn=0/3FF5330
+2026-01-03 01:59:11.087 KST [10632] ì˜¤ë¥˜:  "updated_at" ì—´(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ ìë£Œ ê°€ìš´ë° null ê°’ì´ ìˆìŠµë‹ˆë‹¤
+2026-01-03 01:59:11.087 KST [10632] ëª…ë ¹ êµ¬ë¬¸:  /*
+	  Warnings:
+	
+	  - You are about to drop the column `address` on the `meetings` table. All the data in the column will be lost.
+	  - You are about to drop the column `name` on the `users` table. All the data in the column will be lost.
+	  - You are about to drop the column `provider` on the `users` table. All the data in the column will be lost.
+	  - You are about to drop the column `provider_id` on the `users` table. All the data in the column will be lost.
+	  - You are about to drop the column `role` on the `users` table. All the data in the column will be lost.
+	  - Added the required column `updated_at` to the `meetings` table without a default value. This is not possible if the table is not empty.
+	  - Added the required column `updated_at` to the `participations` table without a default value. This is not possible if the table is not empty.
+	  - Added the required column `updated_at` to the `user_interests` table without a default value. This is not possible if the table is not empty.
+	  - Added the required column `updated_at` to the `users` table without a default value. This is not possible if the table is not empty.
+	
+	*/
+	-- DropForeignKey
+	ALTER TABLE "user_interests" DROP CONSTRAINT "user_interests_interest_id_fkey";
+	
+	-- DropForeignKey
+	ALTER TABLE "user_interests" DROP CONSTRAINT "user_interests_user_id_fkey";
+	
+	-- AlterTable
+	ALTER TABLE "meetings" DROP COLUMN "address",
+	ADD COLUMN     "updated_at" TIMESTAMP(3) NOT NULL;
+	
+	-- AlterTable
+	ALTER TABLE "participations" ADD COLUMN     "updated_at" TIMESTAMP(3) NOT NULL;
+	
+	-- AlterTable
+	ALTER TABLE "user_interests" ADD COLUMN     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	ADD COLUMN     "updated_at" TIMESTAMP(3) NOT NULL;
+	
+	-- AlterTable
+	ALTER TABLE "users" DROP COLUMN "name",
+	DROP COLUMN "provider",
+	DROP COLUMN "provider_id",
+	DROP COLUMN "role",
+	ADD COLUMN     "updated_at" TIMESTAMP(3) NOT NULL;
+	
+	-- DropEnum
+	DROP TYPE "UserRole";
+	
+	-- CreateTable
+	CREATE TABLE "social_accounts" (
+	    "id" SERIAL NOT NULL,
+	    "google_sub_id" TEXT NOT NULL,
+	    "user_id" INTEGER NOT NULL,
+	    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	    "updated_at" TIMESTAMP(3) NOT NULL,
+	
+	    CONSTRAINT "social_accounts_pkey" PRIMARY KEY ("id")
+	);
+	
+	-- CreateIndex
+	CREATE UNIQUE INDEX "social_accounts_google_sub_id_key" ON "social_accounts"("google_sub_id");
+	
+	-- CreateIndex
+	CREATE UNIQUE INDEX "social_accounts_user_id_key" ON "social_accounts"("user_id");
+	
+	-- AddForeignKey
+	ALTER TABLE "social_accounts" ADD CONSTRAINT "social_accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+	
+	-- AddForeignKey
+	ALTER TABLE "user_interests" ADD CONSTRAINT "user_interests_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+	
+	-- AddForeignKey
+	ALTER TABLE "user_interests" ADD CONSTRAINT "user_interests_interest_id_fkey" FOREIGN KEY ("interest_id") REFERENCES "interests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+	
+2026-01-03 01:59:46.834 KST [14636] ì˜¤ë¥˜:  "updated_at" ì´ë¦„ì˜ ì¹¼ëŸ¼ì€ ì—†ìŠµë‹ˆë‹¤ 45 ë²ˆì§¸ ë¬¸ì ë¶€ê·¼
+2026-01-03 01:59:46.834 KST [14636] íŒíŠ¸:  ì•„ë§ˆ "users.created_at" ì¹¼ëŸ¼ì„ ì°¸ì¡°í•˜ëŠ” ê²ƒ ê°™ìŠµë‹ˆë‹¤.
+2026-01-03 01:59:46.834 KST [14636] ëª…ë ¹ êµ¬ë¬¸:  UPDATE "users"
+	SET updated_at = NOW()
+	WHERE updated_at IS NULL;
+2026-01-03 02:00:21.026 KST [14636] ì˜¤ë¥˜:  "updated_at" ì¹¼ëŸ¼ì€ "users" ë¦´ë ˆì´ì…˜(relation)ì— ì—†ìŒ 20 ë²ˆì§¸ ë¬¸ì ë¶€ê·¼
+2026-01-03 02:00:21.026 KST [14636] ëª…ë ¹ êµ¬ë¬¸:  UPDATE "users" SET updated_at = NOW() WHERE name IS NULL;
+2026-01-03 02:01:09.006 KST [29292] ì˜¤ë¥˜:  "_prisma_migrations" í…Œì´ë¸” ì—†ìŒ
+2026-01-03 02:01:09.006 KST [29292] ëª…ë ¹ êµ¬ë¬¸:  DROP TABLE _prisma_migrations
+2026-01-03 02:01:13.595 KST [34464] ì˜¤ë¥˜:  "provider_id" ì´ë¦„ì˜ ì¹¼ëŸ¼ì€ ì—†ìŠµë‹ˆë‹¤ 160 ë²ˆì§¸ ë¬¸ì ë¶€ê·¼
+2026-01-03 02:01:13.595 KST [34464] ëª…ë ¹ êµ¬ë¬¸:  with "__ps_agg__" as (select cast(coalesce(count(*), 0) as text) as "__ps_count__" from "public"."users" where true) select "__ps_agg__"."__ps_count__", "id", "provider_id", "provider", "bio", "nickname", "password", "email", "name", "created_at", "role" from "public"."users" inner join "__ps_agg__" on true where true limit $1 offset 0
+2026-01-03 02:04:10.020 KST [19476] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: time
+2026-01-03 02:04:22.818 KST [19476] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 119°³(0.7%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 1°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 12.626 s, µ¿±âÈ­½Ã°£: 0.143 s, ÀüÃ¼½Ã°£: 12.799 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 97, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.002 s; ½ÇÁ¦ÀÛ¾÷·®: 751 kB, ¿¹»óÇÑÀÛ¾÷·®: 4434 kB; lsn=0/40B1258, redo lsn=0/40B1220
+2026-01-03 02:36:28.428 KST [11512] ·Î±×:  ¼­¹ö ÇÁ·Î¼¼½º (PID 34152) ÇÁ·Î¼¼½º°¡ 0x40010004 ¿¹¿Ü·Î ÀÎÇØ Á¾·áµÊ
+2026-01-03 02:36:28.428 KST [11512] »ó¼¼Á¤º¸:  ÇÁ·Î¼¼½º ½ÇÇà ½ÇÆĞ: with "__ps_agg__" as (select cast(coalesce(count(*), 0) as text) as "__ps_count__" from "public"."users" where true) select "__ps_agg__"."__ps_count__", "id", "bio", "nickname", "password", "email", "updated_at", "created_at" from "public"."users" inner join "__ps_agg__" on true where true limit $1 offset 0
+2026-01-03 02:36:28.428 KST [11512] ÈùÆ®:  16Áø¼ö °ª¿¡ ´ëÇÑ ¼³¸íÀº C Æ÷ÇÔ ÆÄÀÏ "ntstatus.h"¸¦ ÂüÁ¶ÇÏ½Ê½Ã¿À.
+2026-01-03 02:36:28.428 KST [11512] ·Î±×:  ´Ù¸¥ È°¼ºÈ­ µÇ¾îÀÖ´Â ¼­¹ö ÇÁ·Î¼¼½º¸¦ ¸¶Ä¡°í ÀÖ´Â ÁßÀÔ´Ï´Ù
+2026-01-03 02:36:28.552 KST [11512] ·Î±×:  ¸ğµç ¼­¹ö ÇÁ·Î¼¼½º°¡ ÁßÁö µÇ¾ú½À´Ï´Ù; Àç ÃÊ±âÈ­ Áß
+2026-01-03 02:36:28.655 KST [11512] ·Î±×:  ½ÃÀÛ ÇÁ·Î¼¼½º (PID 30900) ÇÁ·Î¼¼½º°¡ 0xC000026B ¿¹¿Ü·Î ÀÎÇØ Á¾·áµÊ
+2026-01-03 02:36:28.655 KST [11512] ÈùÆ®:  16Áø¼ö °ª¿¡ ´ëÇÑ ¼³¸íÀº C Æ÷ÇÔ ÆÄÀÏ "ntstatus.h"¸¦ ÂüÁ¶ÇÏ½Ê½Ã¿À.
+2026-01-03 02:36:28.655 KST [11512] ·Î±×:  ½ÃÀÛ ÇÁ·Î¼¼½º ½ÇÆĞ ¶§¹®¿¡ ¼­¹ö ½ÃÀÛÀÌ ÁßÁö µÇ¾ú½À´Ï´Ù
+2026-01-03 02:36:28.657 KST [11512] ·Î±×:  µ¥ÀÌÅÍº£ÀÌ½º ½Ã½ºÅÛ ¼­ºñ½º¸¦ ÁßÁöÇß½À´Ï´Ù
+2026-01-05 02:57:13.585 KST [22516] ·Î±×:  PostgreSQL 16.11, compiled by Visual C++ build 1944, 64-bit ¼­¹ö¸¦ ½ÃÀÛÇÕ´Ï´Ù.
+2026-01-05 02:57:13.591 KST [22516] ·Î±×:  IPv6, ÁÖ¼Ò: "::1", Æ÷Æ® 5432 ¹øÀ¸·Î Á¢¼ÓÀ» Çã¿ëÇÕ´Ï´Ù
+2026-01-05 02:57:13.591 KST [22516] ·Î±×:  IPv4, ÁÖ¼Ò: "127.0.0.1", Æ÷Æ® 5432 ¹øÀ¸·Î Á¢¼ÓÀ» Çã¿ëÇÕ´Ï´Ù
+2026-01-05 02:57:13.693 KST [24000] ·Î±×:  µ¥ÀÌÅÍº£ÀÌ½º ½Ã½ºÅÛÀÌ ºñÁ¤»óÀûÀ¸·Î Á¾·áµÇ¾úÀ½; ¸¶Áö¸· ¿î¿µ½Ã°£: 2026-01-03 02:04:22 KST
+2026-01-05 02:57:14.950 KST [24000] ·Î±×:  µ¥ÀÌÅÍº£ÀÌ½º ½Ã½ºÅÛÀÌ Á¤»óÀûÀ¸·Î Á¾·áµÇÁö ¸øÇß½À´Ï´Ù, ÀÚµ¿ º¹±¸ ÀÛ¾÷À» ÁøÇàÇÕ´Ï´Ù
+2026-01-05 02:57:14.956 KST [24000] ·Î±×:  0/40B1220¿¡¼­ redo ÀÛ¾÷ ½ÃÀÛµÊ
+2026-01-05 02:57:14.956 KST [24000] ·Î±×:  Àß¸øµÈ ·¹ÄÚµå ±æÀÌ: À§Ä¡ 0/40B1308, ±â´ë°ª 24, ½ÇÀç°ª 0
+2026-01-05 02:57:14.956 KST [24000] ·Î±×:  0/40B12D0¿¡¼­ redo ÀÛ¾÷ ¿Ï·á, ½Ã½ºÅÛ »ç¿ë·®: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2026-01-05 02:57:14.964 KST [34644] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: end-of-recovery immediate wait
+2026-01-05 02:57:14.984 KST [34644] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 3°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.002 s, µ¿±âÈ­½Ã°£: 0.005 s, ÀüÃ¼½Ã°£: 0.026 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 2, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.003 s; ½ÇÁ¦ÀÛ¾÷·®: 0 kB, ¿¹»óÇÑÀÛ¾÷·®: 0 kB; lsn=0/40B1308, redo lsn=0/40B1308
+2026-01-05 02:57:15.016 KST [22516] ·Î±×:  ÀÌÁ¦ µ¥ÀÌÅÍº£ÀÌ½º ¼­¹ö·Î Á¢¼ÓÇÒ ¼ö ÀÖ½À´Ï´Ù
+2026-01-05 03:02:14.987 KST [34644] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: time
+2026-01-05 03:02:15.761 KST [34644] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 7°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.751 s, µ¿±âÈ­½Ã°£: 0.009 s, ÀüÃ¼½Ã°£: 0.774 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 4, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.003 s; ½ÇÁ¦ÀÛ¾÷·®: 10 kB, ¿¹»óÇÑÀÛ¾÷·®: 10 kB; lsn=0/40B3D98, redo lsn=0/40B3D60
+2026-01-05 05:22:47.808 KST [22516] ·Î±×:  fast ÁßÁö ¿äÃ»À» ¹Ş¾Ò½À´Ï´Ù.
+2026-01-05 05:22:47.811 KST [10068] ¿À·ù:  »ç¿ëÀÚ ¿äÃ»¿¡ ÀÇÇØ ÀÛ¾÷À» Ãë¼ÒÇÕ´Ï´Ù.
+2026-01-05 05:22:47.813 KST [22516] ·Î±×:  ¸ğµç È°¼ºÈ­ µÇ¾îÀÖ´Â Æ®·£Àè¼ÇÀ» ÁßÁöÇÏ°í ÀÖ½À´Ï´Ù.
+2026-01-05 05:22:47.816 KST [22516] ·Î±×:  ¹é±×¶ó¿îµå ÀÛ¾÷ÀÚ "logical replication launcher" (PID 10068) ÇÁ·Î±×·¥Àº 1 ÄÚµå·Î ¸¶ÃÆ½À´Ï´Ù
+2026-01-05 05:22:47.819 KST [34644] ·Î±×:  ¼­ºñ½º¸¦ ¸ØÃß°í ÀÖ½À´Ï´Ù
+2026-01-05 05:22:47.822 KST [34644] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: shutdown immediate
+2026-01-05 05:22:47.838 KST [34644] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 0°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.001 s, µ¿±âÈ­½Ã°£: 0.001 s, ÀüÃ¼½Ã°£: 0.019 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 0, ÃÖÀå½Ã°£: 0.000 s, Æò±Õ½Ã°£: 0.000 s; ½ÇÁ¦ÀÛ¾÷·®: 0 kB, ¿¹»óÇÑÀÛ¾÷·®: 9 kB; lsn=0/40B3E48, redo lsn=0/40B3E48
+2026-01-05 05:22:47.847 KST [22516] ·Î±×:  µ¥ÀÌÅÍº£ÀÌ½º ½Ã½ºÅÛ ¼­ºñ½º¸¦ ÁßÁöÇß½À´Ï´Ù
+2026-01-05 05:22:54.207 KST [24372] ·Î±×:  PostgreSQL 16.11, compiled by Visual C++ build 1944, 64-bit ¼­¹ö¸¦ ½ÃÀÛÇÕ´Ï´Ù.
+2026-01-05 05:22:54.213 KST [24372] ·Î±×:  IPv6, ÁÖ¼Ò: "::1", Æ÷Æ® 5432 ¹øÀ¸·Î Á¢¼ÓÀ» Çã¿ëÇÕ´Ï´Ù
+2026-01-05 05:22:54.213 KST [24372] ·Î±×:  IPv4, ÁÖ¼Ò: "127.0.0.1", Æ÷Æ® 5432 ¹øÀ¸·Î Á¢¼ÓÀ» Çã¿ëÇÕ´Ï´Ù
+2026-01-05 05:22:54.306 KST [31796] ·Î±×:  µ¥ÀÌÅÍº£ÀÌ½º ½Ã½ºÅÛ ¸¶Áö¸· °¡µ¿ ÁßÁö ½Ã°¢: 2026-01-05 05:22:47 KST
+2026-01-05 05:22:54.342 KST [24372] ·Î±×:  ÀÌÁ¦ µ¥ÀÌÅÍº£ÀÌ½º ¼­¹ö·Î Á¢¼ÓÇÒ ¼ö ÀÖ½À´Ï´Ù
+2026-01-05 05:26:26.607 KST [32600] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:26:26.607 KST [32600] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (1, test@1example.com, $2b$10$EulXA9YtE83vuHoGZF3HyeErgOImTjPLZo1PNKKdnsm/CH0d7Icku, null, null, 2026-01-04 20:26:26.6, 2026-01-04 20:26:26.6)
+2026-01-05 05:26:26.607 KST [32600] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:27:54.294 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: time
+2026-01-05 05:27:54.529 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 5°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.213 s, µ¿±âÈ­½Ã°£: 0.009 s, ÀüÃ¼½Ã°£: 0.238 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 4, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.002 s; ½ÇÁ¦ÀÛ¾÷·®: 0 kB, ¿¹»óÇÑÀÛ¾÷·®: 0 kB; lsn=0/40B3FF8, redo lsn=0/40B3FC0
+2026-01-05 05:29:20.554 KST [27636] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:29:20.554 KST [27636] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (2, test@1example.com, $2b$10$BQKb3OhZTNPGQ13hePg1qeSpDgHXSgPN9Ew3VXRUYw1dlXZuwRX2O, null, null, 2026-01-04 20:29:20.55, 2026-01-04 20:29:20.55)
+2026-01-05 05:29:20.554 KST [27636] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:30:14.129 KST [16604] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:30:14.129 KST [16604] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (3, test@1example.com, $2b$10$3nr53fW0vlz7ICsGa30jYu35Tf2hkDgBndboA5N5IuzimT5oWQGBS, null, null, 2026-01-04 20:30:14.125, 2026-01-04 20:30:14.125)
+2026-01-05 05:30:14.129 KST [16604] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:30:42.034 KST [28536] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:30:42.034 KST [28536] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (4, test@1example.com, $2b$10$5ueBx5TsLzJBHq2U1jOHQe1tWJF.OGm1QolM5jvUgUCta63QV5Aiy, null, null, 2026-01-04 20:30:42.029, 2026-01-04 20:30:42.029)
+2026-01-05 05:30:42.034 KST [28536] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:31:19.794 KST [33412] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:31:19.794 KST [33412] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (5, test@1example.com, $2b$10$yLICOPjGfDj6Xf9QIdyJCuK/i24LxmU7vRyjOL0tG9eMac3mOLHE6, null, null, 2026-01-04 20:31:19.79, 2026-01-04 20:31:19.79)
+2026-01-05 05:31:19.794 KST [33412] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:31:39.304 KST [26532] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:31:39.304 KST [26532] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (6, test@1example.com, $2b$10$/ArLuDbG1HMztRzXr8ci0O1vFuhk5sO85onY0JLFao0aAt/Zm6/0e, null, null, 2026-01-04 20:31:39.3, 2026-01-04 20:31:39.3)
+2026-01-05 05:31:39.304 KST [26532] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:32:16.159 KST [34712] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:32:16.159 KST [34712] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (7, test@1example.com, $2b$10$l57ya7JUoAO50drkinbUj.pMXhN3lGwYnLV6sFd0QMRfz9aMu/xa., null, null, 2026-01-04 20:32:16.155, 2026-01-04 20:32:16.155)
+2026-01-05 05:32:16.159 KST [34712] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:32:27.720 KST [17796] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:32:27.720 KST [17796] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (8, test@1example.com, $2b$10$/EracPDbM7nJZGGGzFIo0eHSezKpx0Yz2dyQdofLLcHA2CYwRHXWW, null, null, 2026-01-04 20:32:27.716, 2026-01-04 20:32:27.716)
+2026-01-05 05:32:27.720 KST [17796] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:32:54.541 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: time
+2026-01-05 05:32:54.685 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 2°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.116 s, µ¿±âÈ­½Ã°£: 0.005 s, ÀüÃ¼½Ã°£: 0.145 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 2, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.003 s; ½ÇÁ¦ÀÛ¾÷·®: 0 kB, ¿¹»óÇÑÀÛ¾÷·®: 0 kB; lsn=0/40B41C0, redo lsn=0/40B4188
+2026-01-05 05:33:44.196 KST [9788] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:33:44.196 KST [9788] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (9, test@1example.com, $2b$10$PivWdHYk8u1Yajkw..wukeOwOigx8TalCcmZe.jcgtP6A.d1SCKLC, null, null, 2026-01-04 20:33:44.193, 2026-01-04 20:33:44.193)
+2026-01-05 05:33:44.196 KST [9788] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:34:47.962 KST [15100] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:34:47.962 KST [15100] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (10, test@1example.com, $2b$10$6pL3AZwgazFvgScEjfchjOalPq/vsCFR/gF/lpfu7Q47ZbsAW3Btu, null, null, 2026-01-04 20:34:47.958, 2026-01-04 20:34:47.958)
+2026-01-05 05:34:47.962 KST [15100] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:35:33.294 KST [26544] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:35:33.294 KST [26544] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (11, test@1example.com, $2b$10$tdbWCo4SJ/VrOOwKEl93duuKQ2lbzqngkVHQwxAams0niAFG1uNs2, null, null, 2026-01-04 20:35:33.291, 2026-01-04 20:35:33.291)
+2026-01-05 05:35:33.294 KST [26544] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:35:47.146 KST [31416] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:35:47.146 KST [31416] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (12, test@1example.com, $2b$10$NUkFoXy4BwB7QjFoGrl0KehKT8S70LYvmlXOmZ/PnJUd84G1EXmde, null, null, 2026-01-04 20:35:47.142, 2026-01-04 20:35:47.142)
+2026-01-05 05:35:47.146 KST [31416] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:36:09.557 KST [3492] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:36:09.557 KST [3492] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (13, test@1example.com, $2b$10$PL0WSM6upwM0OpyDiU.L3.CRsY1uTn2ZNJl2st0JGarLWsqNjg3Zy, null, null, 2026-01-04 20:36:09.553, 2026-01-04 20:36:09.553)
+2026-01-05 05:36:09.557 KST [3492] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:36:24.834 KST [33924] ì˜¤ë¥˜:  "nickname" ì¹¼ëŸ¼(í•´ë‹¹ ë¦´ë ˆì´ì…˜ "users")ì˜ null ê°’ì´ not null ì œì•½ì¡°ê±´ì„ ìœ„ë°˜í–ˆìŠµë‹ˆë‹¤.
+2026-01-05 05:36:24.834 KST [33924] ìƒì„¸ì •ë³´:  ì‹¤íŒ¨í•œ ìë£Œ: (14, test@1example.com, $2b$10$F8/d.sWqoj1WV1dx1NRt6.eofM2MFJVGbDGKtFBvKDemrazET8DTi, null, null, 2026-01-04 20:36:24.83, 2026-01-04 20:36:24.83)
+2026-01-05 05:36:24.834 KST [33924] ëª…ë ¹ êµ¬ë¬¸:  INSERT INTO "public"."users" ("email","password","created_at","updated_at") VALUES ($1,$2,$3,$4) RETURNING "public"."users"."id", "public"."users"."email", "public"."users"."password", "public"."users"."nickname", "public"."users"."bio", "public"."users"."created_at", "public"."users"."updated_at"
+2026-01-05 05:37:36.950 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: immediate force wait
+2026-01-05 05:37:36.981 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 6°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.004 s, µ¿±âÈ­½Ã°£: 0.012 s, ÀüÃ¼½Ã°£: 0.032 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 6, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.002 s; ½ÇÁ¦ÀÛ¾÷·®: 4830 kB, ¿¹»óÇÑÀÛ¾÷·®: 4830 kB; lsn=0/456BAD8, redo lsn=0/456BAA0
+2026-01-05 05:37:37.695 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: immediate force wait
+2026-01-05 05:37:37.740 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 22°³(0.1%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.004 s, µ¿±âÈ­½Ã°£: 0.023 s, ÀüÃ¼½Ã°£: 0.045 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 12, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.002 s; ½ÇÁ¦ÀÛ¾÷·®: 4831 kB, ¿¹»óÇÑÀÛ¾÷·®: 4831 kB; lsn=0/4A239B0, redo lsn=0/4A23978
+2026-01-05 05:37:57.097 KST [24372] ·Î±×:  fast ÁßÁö ¿äÃ»À» ¹Ş¾Ò½À´Ï´Ù.
+2026-01-05 05:37:57.099 KST [11400] ¿À·ù:  »ç¿ëÀÚ ¿äÃ»¿¡ ÀÇÇØ ÀÛ¾÷À» Ãë¼ÒÇÕ´Ï´Ù.
+2026-01-05 05:37:57.102 KST [24372] ·Î±×:  ¸ğµç È°¼ºÈ­ µÇ¾îÀÖ´Â Æ®·£Àè¼ÇÀ» ÁßÁöÇÏ°í ÀÖ½À´Ï´Ù.
+2026-01-05 05:37:57.104 KST [24372] ·Î±×:  ¹é±×¶ó¿îµå ÀÛ¾÷ÀÚ "logical replication launcher" (PID 11400) ÇÁ·Î±×·¥Àº 1 ÄÚµå·Î ¸¶ÃÆ½À´Ï´Ù
+2026-01-05 05:37:57.107 KST [29400] ·Î±×:  ¼­ºñ½º¸¦ ¸ØÃß°í ÀÖ½À´Ï´Ù
+2026-01-05 05:37:57.110 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ½ÃÀÛ: shutdown immediate
+2026-01-05 05:37:57.137 KST [29400] ·Î±×:  Ã¼Å©Æ÷ÀÎÆ® ÀÛ¾÷¿Ï·á: 5°³(0.0%) ¹öÆÛ ¾¸; 0°³ WAL ÆÄÀÏ Ãß°¡µÊ, 0°³ Áö¿üÀ½, 0°³ ÀçÈ°¿ë; ¾²±â½Ã°£: 0.003 s, µ¿±âÈ­½Ã°£: 0.011 s, ÀüÃ¼½Ã°£: 0.030 s; µ¿±âÈ­ ÆÄÀÏ °³¼ö: 5, ÃÖÀå½Ã°£: 0.003 s, Æò±Õ½Ã°£: 0.003 s; ½ÇÁ¦ÀÛ¾÷·®: 10 kB, ¿¹»óÇÑÀÛ¾÷·®: 4349 kB; lsn=0/4A26560, redo lsn=0/4A26560
+2026-01-05 05:37:57.146 KST [24372] ·Î±×:  µ¥ÀÌÅÍº£ÀÌ½º ½Ã½ºÅÛ ¼­ºñ½º¸¦ ÁßÁöÇß½À´Ï´Ù

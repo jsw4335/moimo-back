@@ -6,10 +6,13 @@ import {
   Res,
   HttpStatus,
   HttpException,
+  Query,
+  //아래의 2개는 상세조회에서 쓸 라이브러리
 } from '@nestjs/common';
 import * as express from 'express';
 import { MeetingsService } from './meetings.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
+import { PageOptionsDto } from './dto/page-options.dto';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -34,10 +37,13 @@ export class MeetingsController {
   }
 
   @Get()
-  async findAll(@Res() res: express.Response) {
+  async findAll(
+    @Res() res: express.Response,
+    @Query() pageOptionsDto: PageOptionsDto,
+  ) {
     try {
-      const meetings = await this.meetingsService.findAll();
-      return res.status(HttpStatus.OK).json(meetings);
+      const result = await this.meetingsService.findAll(pageOptionsDto);
+      return res.status(HttpStatus.OK).json(result);
     } catch (error) {
       if (error instanceof HttpException) {
         return res.status(error.getStatus()).send();

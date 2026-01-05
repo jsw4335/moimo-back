@@ -39,10 +39,9 @@ export class UsersService {
 
   // 1-1 일반 회원가입
   async registerUser(
+    nickname: string,
     email: string,
     password: string,
-    nickname: string,
-    tempToken?: string,
   ): Promise<User> {
     try {
       const existing = await this.prisma.user.findUnique({
@@ -63,6 +62,7 @@ export class UsersService {
           email,
           password: hashedPassword,
           nickname,
+          resetCode: '',
         },
       });
 

@@ -28,11 +28,7 @@ export class CreateMeetingDto {
   @IsNotEmpty()
   meetingDate: string;
 
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  latitude: number;
-
-  @IsNumber()
-  @IsNotEmpty()
-  longitude: number;
+  address: string;
 }

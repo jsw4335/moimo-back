@@ -28,7 +28,7 @@ model User {
   resetCode   String?   @unique
   refreshToken String?  @unique
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
 // 관계 설정 (DB 컬럼이 아닌 Prisma의 가상 필드입니다)
   socialAccount SocialAccount?

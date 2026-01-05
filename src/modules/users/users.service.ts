@@ -41,6 +41,7 @@ export class UsersService {
   async registerUser(
     email: string,
     password: string,
+    nickname: string,
     tempToken?: string,
   ): Promise<User> {
     try {
@@ -61,7 +62,7 @@ export class UsersService {
         data: {
           email,
           password: hashedPassword,
-          // nickname 제거
+          nickname,
         },
       });
 

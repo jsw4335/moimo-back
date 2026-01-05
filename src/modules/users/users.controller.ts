@@ -8,15 +8,14 @@ export class UsersController {
   // 회원가입
   @Post('register')
   async register(
+    @Body('nickname') nickname: string,
     @Body('email') email: string,
     @Body('password') password: string,
-    @Body('tempToken') tempToken?: string,
-    //TODO: tempToken 처리하는 로직 추가해야함
   ) {
     const user = await this.usersService.registerUser(
+      nickname,
       email,
       password,
-      tempToken,
     );
     return { message: '회원가입 성공', user };
   }

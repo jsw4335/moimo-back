@@ -1,5 +1,18 @@
-import { Controller, Post, Body, Get, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  Patch,
+  Req,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
+import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtPayload } from 'src/auth/jwt-payload.interface';
 
 @Controller('users')
 export class UsersController {
@@ -50,5 +63,15 @@ export class UsersController {
   async googleCallback(@Query('code') code: string) {
     const redirectUri = 'http://localhost:3000/users/google/callback';
     return this.usersService.loginWithGoogle(code, redirectUri);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('extraInfo')
+  async updateExtraInfo(
+    @Req() req: Request & { user: JwtPayload },
+    @Body() dto: UpdateExtraInfoDto,
+  ) {
+    const userId = req.user.id;
+    return this.usersService.updateExtraInfo(userId, dto);
   }
 }

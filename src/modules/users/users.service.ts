@@ -9,6 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
 import { User } from '@prisma/client'; // Prisma 모델 타입 가져오기
+import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
 
 //구글 토큰 엔드포인트 응답 구조를 타입으로 정의
 interface GoogleTokenResponse {
@@ -141,9 +142,19 @@ export class UsersService {
       }
 
       // 기존 회원 → Access/Refresh Token 발급
-      const payload = { email, providerId };
-      const jwtAccess = this.jwtService.sign(payload, { expiresIn: '1h' });
-      const jwtRefresh = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+      const payload = {
+        sub: user.id,
+        email: user.email,
+      };
+      const jwtAccess = this.jwtService.sign(payload, {
+        secret: process.env.JWT_SECRET,
+        expiresIn: '1h',
+      });
+      const jwtRefresh = this.jwtService.sign(payload, {
+        secret: process.env.JWT_SECRET,
+        expiresIn: '7d',
+      });
 
       return {
         accessToken: jwtAccess,
@@ -193,6 +204,91 @@ export class UsersService {
       user: {
         email: user.email,
       },
+    };
+  }
+
+  async updateExtraInfo(userId: number, dto: UpdateExtraInfoDto) {
+    // optional: nickname 중복 체크 (자기 자신 제외)
+    if (!userId) {
+      throw new Error('User ID is missing');
+    }
+
+    if (dto.nickname) {
+      const exists = await this.prisma.user.findFirst({
+        where: { nickname: dto.nickname, id: { not: userId } },
+        select: { id: true },
+      });
+      if (exists) throw new ConflictException('Nickname already in use');
+    }
+
+    // 닉네임/소개는 바로 업데이트
+    const userBaseUpdate = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        nickname: dto.nickname,
+        bio: dto.bio,
+      },
+      select: { id: true, email: true, nickname: true, bio: true },
+    });
+
+    // 관심사 동기화 (N:M: user_interests 테이블)
+    // - 전달된 interests가 있으면: 기존 연결 중 전달 목록에 없는 것 삭제, 없는 것은 추가
+    // - 전달이 없으면: 아무 변경 없음
+    if (dto.interests) {
+      // 유효한 interest id인지 확인 (선택: 없으면 무시 또는 에러)
+      const validInterests = await this.prisma.interest.findMany({
+        where: { id: { in: dto.interests } },
+        select: { id: true },
+      });
+      const validIds = new Set(validInterests.map((i) => i.id));
+
+      // 현재 유저의 연결된 관심사 조회
+      const currentLinks = await this.prisma.userInterest.findMany({
+        where: { userId },
+        select: { id: true, interestId: true },
+      });
+
+      const desired = Array.from(validIds);
+
+      const toDelete = currentLinks
+        .filter((link) => !validIds.has(link.interestId))
+        .map((link) => link.id);
+
+      const currentIds = new Set(currentLinks.map((l) => l.interestId));
+      const toAdd = desired.filter((id) => !currentIds.has(id));
+
+      // 트랜잭션으로 삭제/추가
+      await this.prisma.$transaction([
+        ...(toDelete.length
+          ? [
+              this.prisma.userInterest.deleteMany({
+                where: { id: { in: toDelete } },
+              }),
+            ]
+          : []),
+        ...toAdd.map((interestId) =>
+          this.prisma.userInterest.create({
+            data: { userId, interestId },
+          }),
+        ),
+      ]);
+    }
+
+    // 최신 관심사 목록 반환
+    const interests = await this.prisma.userInterest.findMany({
+      where: { userId },
+      include: { interest: true },
+    });
+
+    return {
+      id: userBaseUpdate.id,
+      email: userBaseUpdate.email,
+      nickname: userBaseUpdate.nickname,
+      bio: userBaseUpdate.bio,
+      interests: interests.map((i) => ({
+        id: i.interestId,
+        name: i.interest.name,
+      })),
     };
   }
 }

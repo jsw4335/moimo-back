@@ -21,8 +21,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload): { id: number; username: string } {
-    // payload는 JWT에 담긴 데이터 (예: { id: 1, username: 'youngjae' })
-    return { id: payload.id, username: payload.username };
+  // auth/jwt.strategy.ts
+  validate(payload: any) {
+    console.log('✅ JwtStrategy payload:', payload);
+    return { id: payload.sub, email: payload.email };
   }
 }

@@ -62,7 +62,6 @@ export class UsersService {
           email,
           password: hashedPassword,
           nickname,
-          resetCode: '',
         },
       });
 

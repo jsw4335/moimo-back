@@ -31,7 +31,7 @@ model User {
 
 // 관계 설정 (DB 컬럼이 아닌 Prisma의 가상 필드입니다)
   socialAccount SocialAccount?
-  interests      UserInterest[]
+  intereswts      UserInterest[]
   meetings       Meeting[]        @relation("HostedMeetings")
   participations Participation[]
   messages       ChatMessage[]

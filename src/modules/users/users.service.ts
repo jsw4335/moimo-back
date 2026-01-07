@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
 import { User } from '@prisma/client'; // Prisma 모델 타입 가져오기
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
+import 'dotenv/config';
 
 //구글 토큰 엔드포인트 응답 구조를 타입으로 정의
 interface GoogleTokenResponse {
@@ -45,6 +46,7 @@ export class UsersService {
     password: string,
   ): Promise<User> {
     try {
+      console.log('DATABASE_URL:', process.env.DATABASE_URL);
       const existing = await this.prisma.user.findUnique({
         where: { email },
       });
@@ -133,12 +135,29 @@ export class UsersService {
       });
 
       if (!user) {
-        // 신규 회원 → tempToken 발급
-        const tempToken = this.jwtService.sign(
-          { email, providerId },
-          { expiresIn: '10m' },
-        );
-        return { isNewUser: true, email, tempToken };
+        // 신규 회원 → DB에 바로 생성
+        const newUser = await this.prisma.user.create({
+          data: {
+            email,
+            nickname: '1',
+          },
+        });
+
+        const payload = { sub: newUser.id, email: newUser.email };
+        const jwtAccess = this.jwtService.sign(payload, {
+          secret: process.env.JWT_SECRET,
+          expiresIn: '1h',
+        });
+        const jwtRefresh = this.jwtService.sign(payload, {
+          secret: process.env.JWT_SECRET,
+          expiresIn: '7d',
+        });
+
+        return {
+          accessToken: jwtAccess,
+          refreshToken: jwtRefresh,
+          user: { email, provider_id: providerId },
+        };
       }
 
       // 기존 회원 → Access/Refresh Token 발급

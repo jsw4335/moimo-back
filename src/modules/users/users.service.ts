@@ -46,7 +46,6 @@ export class UsersService {
     password: string,
   ): Promise<User> {
     try {
-      console.log('DATABASE_URL:', process.env.DATABASE_URL);
       const existing = await this.prisma.user.findUnique({
         where: { email },
       });
@@ -92,14 +91,11 @@ export class UsersService {
   async loginWithGoogle(
     code: string,
     redirectUri: string,
-  ): Promise<
-    | { isNewUser: true; email: string; tempToken: string }
-    | {
-        accessToken: string;
-        refreshToken: string;
-        user: { email: string; provider_id: string };
-      }
-  > {
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    user: { isNewUser: boolean; email: string; nickname: string };
+  }> {
     try {
       // 1. 구글 토큰 교환
       const tokenRes = await axios.post<GoogleTokenResponse>(
@@ -122,7 +118,7 @@ export class UsersService {
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
-      const { email, id: providerId, name } = userInfoRes.data;
+      const { email, name } = userInfoRes.data;
 
       // 3. DB 확인
       const user: User | null = await this.prisma.user.findUnique({
@@ -152,7 +148,11 @@ export class UsersService {
         return {
           accessToken: jwtAccess,
           refreshToken: jwtRefresh,
-          user: { email, provider_id: providerId },
+          user: {
+            isNewUser: !newUser.bio, //아직 프로필을 등록하지 않은 유저
+            nickname: newUser.nickname,
+            email: newUser.email,
+          },
         };
       }
 
@@ -174,7 +174,11 @@ export class UsersService {
       return {
         accessToken: jwtAccess,
         refreshToken: jwtRefresh,
-        user: { email, provider_id: providerId },
+        user: {
+          isNewUser: !user.bio, //아직 프로필을 등록하지 않은 유저
+          nickname: user.nickname,
+          email: user.email,
+        },
       };
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -223,7 +227,9 @@ export class UsersService {
       accessToken,
       refreshToken,
       user: {
+        isNewUser: !user.bio, //아직 프로필을 등록하지 않은 유저
         email: user.email,
+        nickname: user.nickname,
       },
     };
   }
@@ -315,5 +321,15 @@ export class UsersService {
 
   async findById(id: number) {
     return this.prisma.user.findUnique({ where: { id } });
+  }
+
+  async isNicknameAvailable(nickname: string): Promise<boolean> {
+    const existing = await this.prisma.user.findUnique({
+      where: { nickname },
+    });
+    console.log(nickname);
+    console.log(existing);
+
+    return !existing;
   }
 }

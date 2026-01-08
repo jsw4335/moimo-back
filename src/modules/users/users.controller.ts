@@ -8,6 +8,7 @@ import {
   Req,
   ValidationPipe,
   UnauthorizedException,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
@@ -80,5 +81,17 @@ export class UsersController {
   ) {
     const userId = req.user.id;
     return this.usersService.updateExtraInfo(userId, dto);
+  }
+
+  @Get('check-nickname')
+  async checkNickname(@Query('nickname') nickname: string) {
+    const available = await this.usersService.isNicknameAvailable(nickname);
+    console.log(available);
+
+    if (!available) {
+      throw new UnauthorizedException();
+    }
+
+    return;
   }
 }

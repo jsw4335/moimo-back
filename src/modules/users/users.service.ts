@@ -164,7 +164,7 @@ export class UsersService {
       };
       const jwtAccess = this.jwtService.sign(payload, {
         secret: process.env.JWT_SECRET,
-        expiresIn: '1h',
+        expiresIn: '5m',
       });
       const jwtRefresh = this.jwtService.sign(payload, {
         secret: process.env.JWT_SECRET,
@@ -209,8 +209,14 @@ export class UsersService {
 
     // 4. JWT 토큰 발급
     const payload = { id: user.id, email: user.email };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const accessToken = this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '5m',
+    });
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '7d',
+    });
 
     // 5. 응답 반환
     return {

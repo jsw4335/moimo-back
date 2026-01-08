@@ -94,4 +94,16 @@ export class UsersController {
 
     return;
   }
+
+  @Get('check-email')
+  async checkEmail(@Query('email') email: string) {
+    const available = await this.usersService.isEmailAvailable(email);
+    console.log(available);
+
+    if (!available) {
+      throw new UnauthorizedException();
+    }
+
+    return;
+  }
 }

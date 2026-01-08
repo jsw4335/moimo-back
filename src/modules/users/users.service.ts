@@ -332,4 +332,14 @@ export class UsersService {
 
     return !existing;
   }
+
+  async isEmailAvailable(email: string): Promise<boolean> {
+    const existing = await this.prisma.user.findFirst({
+      where: { email },
+    });
+    console.log(email);
+    console.log(existing);
+
+    return !existing;
+  }
 }

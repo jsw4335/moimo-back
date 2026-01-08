@@ -24,6 +24,7 @@ model User {
   password    String?
   nickname    String  @unique
   bio         String?  @db.Text
+  image String?
   resetCode   String?  
   refreshToken String?  @unique
   createdAt   DateTime @default(now()) @map("created_at")
@@ -84,6 +85,7 @@ model Meeting {
   description     String   @db.Text
   maxParticipants Int      @map("max_participants")
   meetingDate     DateTime @map("meeting_date")
+  image String?
   address         String  @db.Text
   latitude        Float
   longitude       Float

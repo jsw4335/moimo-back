@@ -122,7 +122,7 @@ export class UsersService {
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
-      const { email, id: providerId } = userInfoRes.data;
+      const { email, id: providerId, name } = userInfoRes.data;
 
       // 3. DB 확인
       const user: User | null = await this.prisma.user.findUnique({
@@ -134,14 +134,15 @@ export class UsersService {
         const newUser = await this.prisma.user.create({
           data: {
             email,
-            nickname: '1',
+            nickname: name,
+            // TODO: 닉네임 받아오는 로직
           },
         });
 
         const payload = { id: newUser.id, email: newUser.email };
         const jwtAccess = this.jwtService.sign(payload, {
           secret: process.env.JWT_SECRET,
-          expiresIn: '1h',
+          expiresIn: '1m',
         });
         const jwtRefresh = this.jwtService.sign(payload, {
           secret: process.env.JWT_SECRET,

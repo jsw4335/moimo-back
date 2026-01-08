@@ -11,6 +11,7 @@ async function bootstrap() {
     origin: process.env.FRONTEND_URL ?? '', // 허용할 프론트 주소
     credentials: true, // 쿠키/인증정보 포함 여부
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    exposedHeaders: ['Authorization'],
   });
 
   app.useGlobalPipes(

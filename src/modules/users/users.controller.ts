@@ -3,16 +3,18 @@ import {
   Post,
   Body,
   Get,
-  Param,
   Query,
   UseGuards,
   Patch,
   Req,
+  ValidationPipe,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { JwtPayload } from 'src/auth/jwt-payload.interface';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('users')
 export class UsersController {
@@ -39,15 +41,9 @@ export class UsersController {
     return await this.usersService.findAll();
   }
 
-  // 특정 유저 조회
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.usersService.findOne(Number(id));
-  }
-
   //로그인
   @Post('login')
-  async login(@Body() body: { email: string; password: string }) {
+  async login(@Body(new ValidationPipe()) body: LoginDto) {
     return this.usersService.login(body.email, body.password);
   }
   //구글 로그인
@@ -57,7 +53,7 @@ export class UsersController {
     return this.usersService.loginWithGoogle(code, redirectUri);
   }
   //구글로그인 url 이걸 브라우저 주소에 넣고 이동해서 로그인하면 구글에서 google/callback 주소를 호출함
-  // https://accounts.google.com/o/oauth2/v2/auth?client_id=432451487718-h713rue36vi4tb4ft1bpela2i56v2d1h.apps.googleusercontent.com&redirect_uri=http://localhost:3000/users/google/callback&response_type=code&scope=email%20profile
+  // https://accounts.google.com/o/oauth2/v2/auth?client_id=432451487718-h713rue36vi4tb4ft1bpela2i56v2d1h.apps.googleusercontent.com&redirect_uri=http://localhost:5173/users/google/callback&response_type=code&scope=email%20profile
   //구글로그인테스트
   @Get('google/callback')
   async googleCallback(@Query('code') code: string) {
@@ -65,6 +61,26 @@ export class UsersController {
     return this.usersService.loginWithGoogle(code, redirectUri);
   }
 
+  // // 토큰 검증 API
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getMe(@Req() req: Request & { user: JwtPayload }) {
+    const user = req.user;
+
+    const foundUser = await this.usersService.findById(user.id);
+
+    if (!foundUser) {
+      throw new UnauthorizedException('유효하지 않은 사용자입니다.');
+    }
+
+    return {
+      isNewUser: !foundUser.bio,
+      email: foundUser.email,
+      nickname: foundUser.nickname ?? null,
+    };
+  }
+
+  //프로필추가
   @UseGuards(JwtAuthGuard)
   @Patch('extraInfo')
   async updateExtraInfo(

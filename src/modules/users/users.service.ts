@@ -88,11 +88,6 @@ export class UsersService {
     return await this.prisma.user.findMany();
   }
 
-  // 특정 유저 조회
-  async findOne(id: number): Promise<User | null> {
-    return await this.prisma.user.findUnique({ where: { id } });
-  }
-
   // // 1-2 구글 로그인
   async loginWithGoogle(
     code: string,
@@ -143,7 +138,7 @@ export class UsersService {
           },
         });
 
-        const payload = { sub: newUser.id, email: newUser.email };
+        const payload = { id: newUser.id, email: newUser.email };
         const jwtAccess = this.jwtService.sign(payload, {
           secret: process.env.JWT_SECRET,
           expiresIn: '1h',
@@ -163,7 +158,7 @@ export class UsersService {
       // 기존 회원 → Access/Refresh Token 발급
 
       const payload = {
-        sub: user.id,
+        id: user.id,
         email: user.email,
       };
       const jwtAccess = this.jwtService.sign(payload, {
@@ -212,7 +207,7 @@ export class UsersService {
     }
 
     // 4. JWT 토큰 발급
-    const payload = { sub: user.id, email: user.email };
+    const payload = { id: user.id, email: user.email };
     const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
@@ -309,5 +304,9 @@ export class UsersService {
         name: i.interest.name,
       })),
     };
+  }
+
+  async findById(id: number) {
+    return this.prisma.user.findUnique({ where: { id } });
   }
 }

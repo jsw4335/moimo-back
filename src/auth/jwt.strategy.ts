@@ -1,13 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy, JwtFromRequestFunction } from 'passport-jwt';
-
-interface JwtPayload {
-  id: number;
-  username: string;
-  iat?: number;
-  exp?: number;
-}
+import { JwtPayload } from './jwt-payload.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -21,8 +15,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload): { id: number; username: string } {
-    // payload는 JWT에 담긴 데이터 (예: { id: 1, username: 'youngjae' })
-    return { id: payload.id, username: payload.username };
+  validate(payload: JwtPayload) {
+    console.log('✅ JwtStrategy payload:', payload);
+    return { id: payload.id, email: payload.email };
   }
 }

@@ -17,7 +17,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err, user, info, context) {
+  handleRequest(err, user, info) {
     console.log('🔍 JwtAuthGuard.handleRequest user:', user);
     console.log('❌ JwtAuthGuard.handleRequest error:', err);
     console.log('ℹ️ JwtAuthGuard.handleRequest info:', info);

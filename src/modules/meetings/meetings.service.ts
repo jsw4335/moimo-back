@@ -80,14 +80,13 @@ export class MeetingsService {
     const skip = (page - 1) * limit;
 
     try {
-      // 2. 전체 개수 조회와 데이터 조회를 동시에 진행 (효율적)
       const [totalCount, meetings] = await Promise.all([
-        this.prisma.meeting.count(), // 전체 모임 개수
+        this.prisma.meeting.count(),
         this.prisma.meeting.findMany({
-          skip: skip, // skip만큼 건너뛰고
-          take: limit, // limit개만큼 가져옴
+          skip: skip,
+          take: limit,
           orderBy: {
-            createdAt: 'desc', // 최신순 정렬
+            createdAt: 'desc',
           },
           include: {
             _count: { select: { participations: true } },
@@ -98,19 +97,20 @@ export class MeetingsService {
         }),
       ]);
 
-      // 명세서 형식에 맞게 데이터 변환 (Mapping)
       const mappedData = meetings.map((meeting) => ({
         meetingId: meeting.id,
         title: meeting.title,
-        // 여러 관심사 중 첫 번째 것의 이름만 가져오거나 합칠건데 이거도 서인님이랑 얘기해보기
-        interestName: meeting.meetingInterests[0]?.interest.name || '',
+        // interestName: meeting.meetingInterests[0]?.interest.name || '',
+        interestName:
+          meeting.meetingInterests
+            .map((mi) => mi.interest.name) // 각 관심사 객체에서 이름만 추출
+            .join(', ') || '',
         maxParticipants: meeting.maxParticipants,
-        currentParticipants: meeting._count.participations, // 참여자 수 반영
+        currentParticipants: meeting._count.participations,
         address: meeting.address,
         meetingDate: meeting.meetingDate,
       }));
 
-      // 3. 데이터와 페이지 정보(메타데이터)를 함께 반환
       return {
         data: mappedData,
         meta: {

@@ -7,24 +7,32 @@ import {
   HttpStatus,
   HttpException,
   Query,
-  //아래의 2개는 상세조회에서 쓸 라이브러리
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import * as express from 'express';
 import { MeetingsService } from './meetings.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { PageOptionsDto } from './dto/page-options.dto';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { JwtPayload } from '../../auth/jwt-payload.interface';
 
 @Controller('meetings')
 export class MeetingsController {
   constructor(private readonly meetingsService: MeetingsService) {}
 
   @Post()
-  async create(@Body() dto: CreateMeetingDto, @Res() res: express.Response) {
+  @UseGuards(JwtAuthGuard)
+  async create(
+    @Body() dto: CreateMeetingDto,
+    @Res() res: express.Response,
+    @Req() req: express.Request & { user: JwtPayload },
+  ) {
     // 임시로 ID가 1인 유저가 방장이라고 가정하고 전달합니다.
     // (추후 JWT 가드 설치 후 req.user.id로 교체될 예정입니다)
     try {
-      const tempHostId = 2;
-      await this.meetingsService.create(dto, tempHostId);
+      const hostId = req.user.id;
+      await this.meetingsService.create(dto, hostId);
 
       return res.status(HttpStatus.CREATED).send();
     } catch (error) {

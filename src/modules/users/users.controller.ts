@@ -4,17 +4,18 @@ import {
   Body,
   Get,
   UseGuards,
-  Patch,
   Req,
   ValidationPipe,
   UnauthorizedException,
-  Query,
+  Res,
+  Put,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
+import type { Response } from 'express';
 
 @Controller('users')
 export class UsersController {
@@ -43,14 +44,60 @@ export class UsersController {
 
   //로그인
   @Post('login')
-  async login(@Body(new ValidationPipe()) body: LoginDto) {
-    return this.usersService.login(body.email, body.password);
+  async login(
+    @Body(new ValidationPipe()) body: LoginDto,
+    @Res() res: Response,
+  ) {
+    const { accessToken, refreshToken, user } = await this.usersService.login(
+      body.email,
+      body.password,
+    );
+    // 1. Authorization 헤더에 담기
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
+
+    // 2. 쿠키에도 담기
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: true, // HTTPS 환경에서만
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 1000, // 1시간
+    });
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    });
+
+    return res.json({ user });
   }
   //구글 로그인
   @Post('login/google')
-  async loginWithGoogle(@Body() body: { code: string; redirectUri: string }) {
+  async loginWithGoogle(
+    @Body() body: { code: string; redirectUri: string },
+    @Res() res: Response,
+  ) {
     const { code, redirectUri } = body;
-    return this.usersService.loginWithGoogle(code, redirectUri);
+    const { accessToken, refreshToken, user } =
+      await this.usersService.loginWithGoogle(code, redirectUri);
+    // 1. Authorization 헤더에 담기
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
+
+    // 2. 쿠키에도 담기
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: true, // HTTPS 환경에서만
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 1000, // 1시간
+    });
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    });
+
+    return res.json({ user });
   }
 
   // // 토큰 검증 API
@@ -67,14 +114,19 @@ export class UsersController {
 
     return {
       isNewUser: !foundUser.bio,
+      id: 12,
       email: foundUser.email,
       nickname: foundUser.nickname ?? null,
+
+      bio: foundUser.bio,
+      // TODO: interest목록 불러오는 로직 추가하기
+      profile_image: '추가해야함',
     };
   }
 
   //프로필추가
   @UseGuards(JwtAuthGuard)
-  @Patch('extraInfo')
+  @Put('extraInfo')
   async updateExtraInfo(
     @Req() req: Request & { user: JwtPayload },
     @Body() dto: UpdateExtraInfoDto,
@@ -83,8 +135,8 @@ export class UsersController {
     return this.usersService.updateExtraInfo(userId, dto);
   }
 
-  @Get('check-nickname')
-  async checkNickname(@Query('nickname') nickname: string) {
+  @Post('check-nickname')
+  async checkNickname(@Body('nickname') nickname: string) {
     const available = await this.usersService.isNicknameAvailable(nickname);
     console.log(available);
 
@@ -92,6 +144,17 @@ export class UsersController {
       throw new UnauthorizedException();
     }
 
+    return;
+  }
+
+  @Post('check-email')
+  async checkEmail(@Body('email') email: string) {
+    const available = await this.usersService.isEmailAvailable(email);
+    console.log(available);
+
+    if (!available) {
+      throw new UnauthorizedException();
+    }
     return;
   }
 }

@@ -6,12 +6,15 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-import { JwtService, TokenExpiredError } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
+import { TokenExpiredError } from 'jsonwebtoken';
 import axios from 'axios';
 import { User } from '@prisma/client'; // Prisma 모델 타입 가져오기
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
 import 'dotenv/config';
 import type { JwtPayload } from 'src/auth/jwt-payload.interface';
+import { Storage } from '@google-cloud/storage';
+import type { Bucket, File } from '@google-cloud/storage';
 //구글 토큰 엔드포인트 응답 구조를 타입으로 정의
 interface GoogleTokenResponse {
   access_token: string;
@@ -34,10 +37,19 @@ interface GoogleUserInfo {
 
 @Injectable()
 export class UsersService {
+  private bucket: Bucket;
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+  ) {
+    const storage = new Storage({
+      projectId: process.env.GCP_PROJECT_ID,
+      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    });
+
+    this.bucket = storage.bucket(process.env.GCS_BUCKET_NAME || '');
+  }
 
   // 일반 회원가입
   async registerUser(
@@ -270,13 +282,15 @@ export class UsersService {
       },
     };
   }
-  //프로필 등록, 수정
-  async updateExtraInfo(userId: number, dto: UpdateExtraInfoDto) {
-    // optional: nickname 중복 체크 (자기 자신 제외)
-    if (!userId) {
-      throw new Error('User ID is missing');
-    }
+  async updateExtraInfo(
+    userId: number,
+    dto: UpdateExtraInfoDto,
+    file?: Express.Multer.File, // 업로드된 파일 (선택적)
+  ) {
+    // 1. 유저 ID가 없으면 에러 발생
+    if (!userId) throw new Error('User ID is missing');
 
+    // 2. 닉네임 중복 체크 (자기 자신 제외)
     if (dto.nickname) {
       const exists = await this.prisma.user.findFirst({
         where: { nickname: dto.nickname, id: { not: userId } },
@@ -285,21 +299,47 @@ export class UsersService {
       if (exists) throw new ConflictException('Nickname already in use');
     }
 
-    // 닉네임/소개는 바로 업데이트
+    // 3. 파일 업로드 처리 (Google Cloud Storage)
+    let imageUrl: string | undefined;
+    if (file) {
+      const blob = this.bucket.file(
+        `${userId}-${Date.now()}-${file.originalname}`,
+      );
+      const blobStream = blob.createWriteStream({
+        resumable: false,
+        contentType: file.mimetype,
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        blobStream.on('error', reject);
+        blobStream.on('finish', () => {
+          imageUrl = `https://storage.googleapis.com/${this.bucket.name}/${blob.name}`;
+          resolve();
+        });
+        blobStream.end(file.buffer);
+      });
+    }
+
+    // 4. 닉네임/소개/이미지 업데이트 (DB 반영)
     const userBaseUpdate = await this.prisma.user.update({
       where: { id: userId },
       data: {
         nickname: dto.nickname,
         bio: dto.bio,
+        ...(imageUrl ? { image: imageUrl } : {}),
       },
-      select: { id: true, email: true, nickname: true, bio: true },
+      select: {
+        id: true,
+        email: true,
+        nickname: true,
+        bio: true,
+        image: true,
+      },
     });
 
-    // 관심사 동기화 (N:M: user_interests 테이블)
-    // - 전달된 interests가 있으면: 기존 연결 중 전달 목록에 없는 것 삭제, 없는 것은 추가
-    // - 전달이 없으면: 아무 변경 없음
-    if (dto.interests) {
-      // 유효한 interest id인지 확인 (선택: 없으면 무시 또는 에러)
+    // 5. interests 동기화 (DTO에서 이미 배열로 파싱됨)
+    if (dto.interests && dto.interests.length > 0) {
+      // 유효한 interest id인지 확인
       const validInterests = await this.prisma.interest.findMany({
         where: { id: { in: dto.interests } },
         select: { id: true },
@@ -314,14 +354,15 @@ export class UsersService {
 
       const desired = Array.from(validIds);
 
+      // 삭제할 관심사
       const toDelete = currentLinks
         .filter((link) => !validIds.has(link.interestId))
         .map((link) => link.id);
 
+      // 추가할 관심사
       const currentIds = new Set(currentLinks.map((l) => l.interestId));
       const toAdd = desired.filter((id) => !currentIds.has(id));
 
-      // 트랜잭션으로 삭제/추가
       await this.prisma.$transaction([
         ...(toDelete.length
           ? [
@@ -338,17 +379,19 @@ export class UsersService {
       ]);
     }
 
-    // 최신 관심사 목록 반환
+    // 6. 최신 관심사 목록 조회
     const interests = await this.prisma.userInterest.findMany({
       where: { userId },
       include: { interest: true },
     });
 
+    // 7. 최종 반환
     return {
       id: userBaseUpdate.id,
       email: userBaseUpdate.email,
       nickname: userBaseUpdate.nickname,
       bio: userBaseUpdate.bio,
+      image: userBaseUpdate.image,
       interests: interests.map((i) => ({
         id: i.interestId,
         name: i.interest.name,
@@ -403,7 +446,11 @@ export class UsersService {
     } catch (err: any) {
       if (err instanceof TokenExpiredError) {
         // 새 refreshToken 발급
-        const { id, email } = this.jwtService.decode<JwtPayload>(refreshToken);
+        const decoded = this.jwtService.decode<JwtPayload | null>(refreshToken);
+        if (!decoded || typeof decoded === 'string') {
+          throw new UnauthorizedException('Refresh token decode 실패');
+        }
+        const { id, email } = decoded;
         const newRefreshToken = this.jwtService.sign(
           { id, email },
           { secret: process.env.JWT_SECRET, expiresIn: '7d' },

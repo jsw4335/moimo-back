@@ -5,7 +5,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
-import { PageOptionsDto } from './dto/page-options.dto';
+import { PageOptionsDto, MeetingSort } from './dto/page-options.dto';
+import { Prisma } from '@prisma/client';
 import axios from 'axios';
 
 interface KakaoAddressDocument {
@@ -22,7 +23,6 @@ interface KakaoAddressResponse {
 export class MeetingsService {
   constructor(private prisma: PrismaService) {}
 
-  // hostId는 나중에 Guard를 통해 유저 정보에서 받아와야 합니다.
   async create(dto: CreateMeetingDto, hostId: number) {
     let latitude: number;
     let longitude: number;
@@ -75,19 +75,46 @@ export class MeetingsService {
   }
 
   async findAll(dto: PageOptionsDto) {
-    const { page = 1, limit = 10 } = dto;
+    const { page = 1, limit = 10, sort, interestFilter, finishedFilter } = dto;
 
     const skip = (page - 1) * limit;
+    const where: Prisma.MeetingWhereInput = {};
+
+    if (finishedFilter === 'false') {
+      where.meetingDate = { gte: new Date() };
+    }
+
+    if (interestFilter && interestFilter !== 'ALL') {
+      where.meetingInterests = {
+        some: { interestId: Number(interestFilter) },
+      };
+    }
+
+    let orderBy: Prisma.MeetingOrderByWithRelationInput;
+
+    switch (sort) {
+      case MeetingSort.UPDATE:
+        orderBy = { updatedAt: 'desc' };
+        break;
+      case MeetingSort.DEADLINE:
+        orderBy = { meetingDate: 'asc' };
+        break;
+      case MeetingSort.POPULAR:
+        orderBy = { participations: { _count: 'desc' } };
+        break;
+      case MeetingSort.NEW:
+      default:
+        orderBy = { createdAt: 'desc' };
+    }
 
     try {
       const [totalCount, meetings] = await Promise.all([
-        this.prisma.meeting.count(),
+        this.prisma.meeting.count({ where }),
         this.prisma.meeting.findMany({
+          where,
           skip: skip,
           take: limit,
-          orderBy: {
-            createdAt: 'desc',
-          },
+          orderBy: orderBy,
           include: {
             _count: { select: { participations: true } },
             meetingInterests: {
@@ -100,11 +127,9 @@ export class MeetingsService {
       const mappedData = meetings.map((meeting) => ({
         meetingId: meeting.id,
         title: meeting.title,
-        // interestName: meeting.meetingInterests[0]?.interest.name || '',
         interestName:
-          meeting.meetingInterests
-            .map((mi) => mi.interest.name) // 각 관심사 객체에서 이름만 추출
-            .join(', ') || '',
+          meeting.meetingInterests.map((mi) => mi.interest.name).join(', ') ||
+          '',
         maxParticipants: meeting.maxParticipants,
         currentParticipants: meeting._count.participations,
         address: meeting.address,

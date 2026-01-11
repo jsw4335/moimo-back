@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
@@ -150,5 +151,46 @@ export class MeetingsService {
         '모임 목록을 가져오는 중 오류가 발생했습니다.',
       );
     }
+  }
+
+  async findOne(id: number) {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id },
+      include: {
+        host: {
+          select: {
+            nickname: true,
+            bio: true,
+          },
+        },
+        meetingInterests: {
+          include: {
+            interest: true,
+          },
+        },
+      },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
+    }
+
+    return {
+      id: meeting.id,
+      title: meeting.title,
+      description: meeting.description,
+      interestName:
+        meeting.meetingInterests.map((mi) => mi.interest.name).join(', ') || '',
+      meetingDate: meeting.meetingDate,
+      location: {
+        address: meeting.address,
+        lat: meeting.latitude,
+        lng: meeting.longitude,
+      },
+      host: {
+        nickname: meeting.host.nickname,
+        bio: meeting.host.bio || '',
+      },
+    };
   }
 }

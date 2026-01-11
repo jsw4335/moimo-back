@@ -1,5 +1,12 @@
-import { IsOptional, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export enum MeetingSort {
+  NEW = 'NEW',
+  UPDATE = 'UPDATE',
+  DEADLINE = 'DEADLINE',
+  POPULAR = 'POPULAR',
+}
 
 export class PageOptionsDto {
   @IsOptional()
@@ -13,5 +20,17 @@ export class PageOptionsDto {
   @IsInt()
   @Min(1)
   @Max(50)
-  limit?: number = 10; // 기본값은 10개로 설정해두긴 했는데 서인님과 얘기해보고 조절하겠습니다.
+  limit?: number = 10;
+
+  @IsOptional()
+  @IsEnum(MeetingSort)
+  sort?: MeetingSort = MeetingSort.NEW;
+
+  @IsOptional()
+  @IsString()
+  interestFilter?: string = 'ALL';
+
+  @IsOptional()
+  @IsString()
+  finishedFilter?: string = 'false';
 }

@@ -408,8 +408,6 @@ export class UsersService {
     const existing = await this.prisma.user.findUnique({
       where: { nickname },
     });
-    console.log(nickname);
-    console.log(existing);
 
     return !existing;
   }

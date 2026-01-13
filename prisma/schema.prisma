@@ -17,58 +17,61 @@ enum ParticipationStatus {
   REJECTED
 }
 
-// 1. 유저 정보
-model User {
-  id          Int      @id @default(autoincrement())
-  email       String   @unique
-  password    String?
-  nickname    String  @unique
-  bio         String?  @db.Text
-  image String?
-  resetCode   String?  
-  refreshToken String?  @unique
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+enum NotificationType {
+  PARTICIPATION_REQUEST
+  PARTICIPATION_ACCEPTED
+  PARTICIPATION_REJECTED
+}
 
-// 관계 설정 (DB 컬럼이 아닌 Prisma의 가상 필드입니다)
-  socialAccount SocialAccount?
-  interests      UserInterest[]
-  meetings       Meeting[]        @relation("HostedMeetings")
-  participations Participation[]
-  messages       ChatMessage[]
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String?
+  nickname     String   @unique
+  bio          String?  @db.Text
+  image        String?
+  resetToken   String?
+  refreshToken String?  @unique
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  socialAccount         SocialAccount?
+  interests             UserInterest[]
+  meetings              Meeting[]       @relation("HostedMeetings")
+  participations        Participation[]
+  messages              ChatMessage[]
+  receivedNotifications Notification[]  @relation("ReceivedNotifications")
+  sentNotifications     Notification[]  @relation("SentNotifications")
 
   @@map("users")
 }
 
-// 2. 소셜 계정 (Google OAuth 전용)
 model SocialAccount {
-  id           Int      @id @default(autoincrement())
-  googleSubId  String   @unique @map("google_sub_id")
-  userId       Int      @unique @map("user_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement())
+  googleSubId String   @unique @map("google_sub_id")
+  userId      Int      @unique @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("social_accounts")
 }
 
-// 3. 관심사 마스터
 model Interest {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
+  id   Int    @id @default(autoincrement())
+  name String @unique
 
   userInterests UserInterest[]
-  meetingInterests MeetingInterest[]
+  meetings      Meeting[]
 
   @@map("interests")
 }
 
-// 4. 유저-관심사 연결 (N:M 관계 해소)
 model UserInterest {
-  id         Int @id @default(autoincrement())
-  userId     Int @map("user_id")
-  interestId Int @map("interest_id")
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  interestId Int      @map("interest_id")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -78,63 +81,48 @@ model UserInterest {
   @@map("user_interests")
 }
 
-// 5. 모임 정보
 model Meeting {
   id              Int      @id @default(autoincrement())
-  title           String
-  description     String   @db.Text
+  title           String   @db.VarChar(100)
+  description     String   @db.VarChar(4000)
   maxParticipants Int      @map("max_participants")
   meetingDate     DateTime @map("meeting_date")
-  image String?
-  address         String  @db.Text
+  image           String?
+  interestId      Int      @map("interest_id")
+  address         String   @db.Text
   latitude        Float
   longitude       Float
-  
-  hostId          Int      @map("host_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
-  host           User            @relation("HostedMeetings", fields: [hostId], references: [id])
+  hostId    Int      @map("host_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  host           User            @relation("HostedMeetings", fields: [hostId], references: [id], onDelete: Cascade)
+  interest       Interest        @relation(fields: [interestId], references: [id])
   participations Participation[]
   messages       ChatMessage[]
-  meetingInterests MeetingInterest[]
+  notifications  Notification[]
 
   @@map("meetings")
 }
 
-// 6. 모임-관심사 연결 (N:M 추가된 부분)
-model MeetingInterest {
-  id         Int      @id @default(autoincrement())
-  meetingId  Int      @map("meeting_id")
-  interestId Int      @map("interest_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
-
-  meeting  Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  interest Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
-
-  @@unique([meetingId, interestId]) // 동일 모임에 중복 관심사 방지
-  @@map("meeting_interests")
-}
-
-// 7. 참여 신청 내역
 model Participation {
-  id         Int                 @id @default(autoincrement())
-  userId     Int                 @map("user_id")
-  meetingId  Int                 @map("meeting_id")
-  status     ParticipationStatus @default(PENDING)
-  checkedIn  Attendance?         @map("checked_in")
-  createdAt  DateTime            @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  id        Int                 @id @default(autoincrement())
+  userId    Int                 @map("user_id")
+  meetingId Int                 @map("meeting_id")
+  status    ParticipationStatus @default(PENDING)
+  checkedIn Attendance?         @map("checked_in")
+  lastReadAt DateTime            @default(now()) @map("last_read_at")
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @default(now()) @updatedAt @map("updated_at")
 
-  user    User    @relation(fields: [userId], references: [id])
-  meeting Meeting @relation(fields: [meetingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, meetingId]) // 중복 신청 방지
+  @@unique([userId, meetingId], name: "userIdMeetingId")
   @@map("participations")
 }
 
-// 7. 채팅 기록
 model ChatMessage {
   id        Int      @id @default(autoincrement())
   content   String   @db.Text
@@ -142,8 +130,26 @@ model ChatMessage {
   meetingId Int      @map("meeting_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  sender  User    @relation(fields: [senderId], references: [id])
-  meeting Meeting @relation(fields: [meetingId], references: [id])
+  sender  User    @relation(fields: [senderId], references: [id] , onDelete: Cascade)
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
+  @@index([meetingId, createdAt])
   @@map("chat_messages")
+}
+
+model Notification {
+  id         Int              @id @default(autoincrement())
+  meetingId  Int?             @map("meeting_id")
+  receiverId Int              @map("receiver_id")
+  senderId   Int?             @map("sender_id")
+  type       NotificationType
+  isRead     Boolean          @default(false) @map("is_read")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime            @default(now()) @updatedAt @map("updated_at")
+  receiver   User             @relation("ReceivedNotifications", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender     User?            @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+  meeting    Meeting?         @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([receiverId, isRead])
+  @@map("notifications")
 }

@@ -15,6 +15,8 @@ import 'dotenv/config';
 import type { JwtPayload } from 'src/auth/jwt-payload.interface';
 import { Storage } from '@google-cloud/storage';
 import type { Bucket, File } from '@google-cloud/storage';
+import { JWTInput } from 'google-auth-library';
+
 //구글 토큰 엔드포인트 응답 구조를 타입으로 정의
 interface GoogleTokenResponse {
   access_token: string;
@@ -45,7 +47,7 @@ export class UsersService {
   ) {
     const storage = new Storage({
       projectId: process.env.GCP_PROJECT_ID,
-      credentials: JSON.parse(process.env.GCP_KEY_JSON!),
+      credentials: JSON.parse(process.env.GCP_KEY_JSON!) as JWTInput,
     });
 
     this.bucket = storage.bucket(process.env.GCS_BUCKET_NAME || '');
@@ -311,7 +313,11 @@ export class UsersService {
       });
 
       await new Promise<void>((resolve, reject) => {
-        blobStream.on('error', reject);
+        blobStream.on('error', (err) => {
+          console.error('GCS upload error:', err);
+          reject(err);
+        });
+
         blobStream.on('finish', () => {
           imageUrl = `https://storage.googleapis.com/${this.bucket.name}/${blob.name}`;
           resolve();

@@ -128,15 +128,15 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put('extra-info')
+  @Put('user-update')
   @UseInterceptors(FileInterceptor('file'))
-  async updateExtraInfo(
+  async updateUser(
     @Req() req: Request & { user: JwtPayload },
     @Body() dto: UpdateExtraInfoDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     const userId = req.user.id;
-    return this.usersService.updateExtraInfo(userId, dto, file);
+    return this.usersService.updateUser(userId, dto, file);
   }
   @Post('check-nickname')
   async checkNickname(@Body('nickname') nickname: string) {

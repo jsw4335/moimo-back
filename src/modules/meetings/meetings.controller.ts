@@ -14,14 +14,18 @@ import {
 } from '@nestjs/common';
 import * as express from 'express';
 import { MeetingsService } from './meetings.service';
+import { ParticipationsService } from './participations.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
-import { PageOptionsDto } from './dto/page-options.dto';
+import { MeetingPageOptionsDto } from './dto/meeting-page-options.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
 
 @Controller('meetings')
 export class MeetingsController {
-  constructor(private readonly meetingsService: MeetingsService) {}
+  constructor(
+    private readonly meetingsService: MeetingsService,
+    private readonly participationsService: ParticipationsService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -47,7 +51,7 @@ export class MeetingsController {
   @Get()
   async findAll(
     @Res() res: express.Response,
-    @Query() pageOptionsDto: PageOptionsDto,
+    @Query() pageOptionsDto: MeetingPageOptionsDto,
   ) {
     try {
       const result = await this.meetingsService.findAll(pageOptionsDto);
@@ -84,11 +88,32 @@ export class MeetingsController {
   ) {
     try {
       const userId = req.user.id;
-      const result = await this.meetingsService.createParticipation(
+      const result = await this.participationsService.createParticipation(
         meetingId,
         userId,
       );
       return res.status(HttpStatus.CREATED).json(result);
+    } catch (error) {
+      if (error instanceof HttpException)
+        return res.status(error.getStatus()).send();
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
+  @Get(':meetingId/participate')
+  @UseGuards(JwtAuthGuard)
+  async getApplicants(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      const userId = req.user.id;
+      const result = await this.participationsService.findApplicants(
+        meetingId,
+        userId,
+      );
+      return res.status(HttpStatus.OK).json(result);
     } catch (error) {
       if (error instanceof HttpException)
         return res.status(error.getStatus()).send();

@@ -303,6 +303,8 @@ export class UsersService {
 
     // 3. 파일 업로드 처리 (Google Cloud Storage)
     let imageUrl: string | undefined;
+    console.log(file, `!이 없습니다`);
+
     if (file) {
       const blob = this.bucket.file(
         `${userId}-${Date.now()}-${file.originalname}`,
@@ -325,6 +327,15 @@ export class UsersService {
         blobStream.end(file.buffer);
       });
     }
+
+    console.log(
+      'buffer length:',
+      file?.buffer?.length,
+      'mimetype:',
+      file?.mimetype,
+      'originalname:',
+      file?.originalname,
+    );
 
     // 4. 닉네임/소개/이미지 업데이트 (DB 반영)
     const userBaseUpdate = await this.prisma.user.update({

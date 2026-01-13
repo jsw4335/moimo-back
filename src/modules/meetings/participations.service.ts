@@ -77,7 +77,6 @@ export class ParticipationsService {
         user: {
           select: {
             nickname: true,
-            image: true,
             bio: true,
           },
         },
@@ -88,7 +87,6 @@ export class ParticipationsService {
     return participations.map((p) => ({
       participationId: p.id,
       nickname: p.user.nickname,
-      profileImage: p.user.image,
       bio: p.user.bio,
       status: p.status,
     }));

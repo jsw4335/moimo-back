@@ -45,7 +45,7 @@ export class UsersService {
   ) {
     const storage = new Storage({
       projectId: process.env.GCP_PROJECT_ID,
-      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      credentials: JSON.parse(process.env.GCP_KEY_JSON!),
     });
 
     this.bucket = storage.bucket(process.env.GCS_BUCKET_NAME || '');
@@ -282,7 +282,7 @@ export class UsersService {
       },
     };
   }
-  async updateExtraInfo(
+  async updateUser(
     userId: number,
     dto: UpdateExtraInfoDto,
     file?: Express.Multer.File, // 업로드된 파일 (선택적)
@@ -408,8 +408,6 @@ export class UsersService {
     const existing = await this.prisma.user.findUnique({
       where: { nickname },
     });
-    console.log(nickname);
-    console.log(existing);
 
     return !existing;
   }

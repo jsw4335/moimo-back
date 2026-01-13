@@ -103,6 +103,15 @@ export class UsersController {
     return res.json({ user });
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  logout(@Res() res: Response) {
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+
+    return res.status(200).send();
+  }
+
   // // 토큰 검증 API
   @UseGuards(JwtAuthGuard)
   @Get('me')

@@ -9,6 +9,8 @@ import {
   UnauthorizedException,
   Res,
   Put,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
@@ -16,6 +18,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
 import type { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('users')
 export class UsersController {
@@ -100,6 +103,15 @@ export class UsersController {
     return res.json({ user });
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  logout(@Res() res: Response) {
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+
+    return res.status(200).send();
+  }
+
   // // 토큰 검증 API
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -124,17 +136,17 @@ export class UsersController {
     };
   }
 
-  //프로필추가
   @UseGuards(JwtAuthGuard)
-  @Put('extraInfo')
+  @Put('extra-info')
+  @UseInterceptors(FileInterceptor('file'))
   async updateExtraInfo(
     @Req() req: Request & { user: JwtPayload },
     @Body() dto: UpdateExtraInfoDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
     const userId = req.user.id;
-    return this.usersService.updateExtraInfo(userId, dto);
+    return this.usersService.updateExtraInfo(userId, dto, file);
   }
-
   @Post('check-nickname')
   async checkNickname(@Body('nickname') nickname: string) {
     const available = await this.usersService.isNicknameAvailable(nickname);
@@ -146,7 +158,6 @@ export class UsersController {
 
     return;
   }
-
   @Post('check-email')
   async checkEmail(@Body('email') email: string) {
     const available = await this.usersService.isEmailAvailable(email);

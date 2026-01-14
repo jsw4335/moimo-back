@@ -81,7 +81,7 @@ export class MeetingsController {
     }
   }
 
-  @Post(':meetingId/participate')
+  @Post(':meetingId/participations')
   @UseGuards(JwtAuthGuard)
   async participate(
     @Param('meetingId', ParseIntPipe) meetingId: number,

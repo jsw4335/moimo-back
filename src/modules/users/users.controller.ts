@@ -20,6 +20,7 @@ import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
+import multer from 'multer';
 
 @Controller('users')
 export class UsersController {
@@ -132,7 +133,7 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Put('user-update')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { storage: multer.memoryStorage() }))
   async updateUser(
     @Req() req: Request & { user: JwtPayload },
     @Body() dto: UpdateExtraInfoDto,

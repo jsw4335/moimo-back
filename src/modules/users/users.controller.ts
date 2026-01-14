@@ -11,6 +11,7 @@ import {
   Put,
   UseInterceptors,
   UploadedFile,
+  ConflictException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
@@ -19,13 +20,11 @@ import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import multer from 'multer';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // 회원가입
   @Post('register')
   async register(
     @Body('nickname') nickname: string,
@@ -40,13 +39,11 @@ export class UsersController {
     return { message: '회원가입 성공', user };
   }
 
-  // 전체 유저 조회
   @Get()
   async findAll() {
     return await this.usersService.findAll();
   }
 
-  //로그인
   @Post('login')
   async login(
     @Body(new ValidationPipe()) body: LoginDto,
@@ -56,10 +53,9 @@ export class UsersController {
       body.email,
       body.password,
     );
-    // 1. Authorization 헤더에 담기
+
     res.setHeader('Authorization', `Bearer ${accessToken}`);
 
-    // 2. 쿠키에도 담기
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: true, // HTTPS 환경에서만
@@ -75,7 +71,7 @@ export class UsersController {
 
     return res.json({ user });
   }
-  //구글 로그인
+
   @Post('login/google')
   async loginWithGoogle(
     @Body() body: { code: string; redirectUri: string },
@@ -84,10 +80,8 @@ export class UsersController {
     const { code, redirectUri } = body;
     const { accessToken, refreshToken, user } =
       await this.usersService.loginWithGoogle(code, redirectUri);
-    // 1. Authorization 헤더에 담기
-    res.setHeader('Authorization', `Bearer ${accessToken}`);
 
-    // 2. 쿠키에도 담기
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: true, // HTTPS 환경에서만
@@ -113,7 +107,6 @@ export class UsersController {
     return res.status(200).send();
   }
 
-  // // 토큰 검증 API
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Req() req: Request & { user: JwtPayload }) {
@@ -127,26 +120,19 @@ export class UsersController {
 
     return {
       isNewUser: !foundUser.bio,
-      id: 12,
+      id: foundUser.id,
       email: foundUser.email,
       nickname: foundUser.nickname ?? null,
 
       bio: foundUser.bio,
       // TODO: interest목록 불러오는 로직 추가하기
-      profile_image: '추가해야함',
+      profile_image: foundUser.image,
     };
   }
 
   @UseGuards(JwtAuthGuard)
   @Put('user-update')
-  @UseInterceptors(
-    FileInterceptor(
-      'file',
-      {
-        storage: multer.memoryStorage(),
-      }, // ✅ 여기서 직접 지정 가능
-    ),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   async updateUser(
     @Req() req: Request & { user: JwtPayload },
     @Body() dto: UpdateExtraInfoDto,
@@ -155,25 +141,46 @@ export class UsersController {
     const userId = req.user.id;
     return this.usersService.updateUser(userId, dto, file);
   }
+
   @Post('check-nickname')
   async checkNickname(@Body('nickname') nickname: string) {
     const available = await this.usersService.isNicknameAvailable(nickname);
-    console.log(available);
 
     if (!available) {
-      throw new UnauthorizedException();
+      throw new ConflictException();
     }
 
     return;
   }
+
   @Post('check-email')
   async checkEmail(@Body('email') email: string) {
     const available = await this.usersService.isEmailAvailable(email);
-    console.log(available);
 
     if (!available) {
-      throw new UnauthorizedException();
+      throw new ConflictException();
     }
     return;
+  }
+
+  @Post('password-reset/request')
+  async requestReset(@Body('email') email: string) {
+    return await this.usersService.requestPasswordReset(email);
+  }
+
+  @Post('password-reset/verify')
+  async verifyCode(@Body('email') email: string, @Body('code') code: string) {
+    return await this.usersService.verifyPasswordResetCode(email, code);
+  }
+
+  @Put('password-reset/confirm')
+  async confirmReset(
+    @Body('resetToken') resetToken: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    return await this.usersService.confirmPasswordReset(
+      resetToken,
+      newPassword,
+    );
   }
 }

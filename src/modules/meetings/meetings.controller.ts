@@ -12,6 +12,7 @@ import {
   Param,
   ParseIntPipe,
   Put,
+  Delete,
 } from '@nestjs/common';
 import * as express from 'express';
 import { MeetingsService } from './meetings.service';
@@ -130,10 +131,36 @@ export class MeetingsController {
     @Body() updates: ParticipationUpdateItem[],
     @Req() req: express.Request & { user: JwtPayload },
   ) {
+    //이 부분 배포할때는 필요가 없는데, 지금 로컬에서 테스트할 때 빠르게 확인을 하기 위해서 남겨뒀습니다
+    //추후에DB에서 수정하는 부분은 await로 남겨두고
+    // return부분에는 res.status(HttpStatus.NO_CONTENT).send();로 수정할 예정입니다.
     return this.participationsService.updateStatuses(
       meetingId,
       req.user.id,
       updates,
     );
+  }
+
+  @Delete(':meetingId/participations/:participationId')
+  @UseGuards(JwtAuthGuard)
+  async deleteParticipation(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Param('participationId', ParseIntPipe) participationId: number,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      const userId = req.user.id;
+      await this.participationsService.deleteParticipation(
+        meetingId,
+        participationId,
+        userId,
+      );
+      return res.status(HttpStatus.NO_CONTENT).send();
+    } catch (error) {
+      if (error instanceof HttpException)
+        return res.status(error.getStatus()).send();
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
   }
 }

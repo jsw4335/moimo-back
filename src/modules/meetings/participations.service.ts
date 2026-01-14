@@ -167,4 +167,70 @@ export class ParticipationsService {
       return results;
     });
   }
+
+  async deleteParticipation(
+    meetingId: number,
+    participationId: number,
+    userId: number,
+  ) {
+    const participation = await this.prisma.participation.findUnique({
+      where: { id: participationId },
+      include: { meeting: true },
+    });
+
+    if (!participation || participation.meetingId !== meetingId) {
+      throw new NotFoundException('참여 정보를 찾을 수 없습니다.');
+    }
+
+    const isHost = participation.meeting.hostId === userId;
+    const isParticipant = participation.userId === userId;
+
+    if (isHost && participation.userId === userId) {
+      throw new BadRequestException(
+        '호스트는 참여 명단에서 본인을 삭제할 수 없습니다.',
+      );
+    }
+
+    if (!isHost && !isParticipant) {
+      throw new ForbiddenException('권한이 없습니다.');
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      await tx.participation.delete({
+        where: { id: participationId },
+      });
+
+      if (isParticipant) {
+        await tx.notification.deleteMany({
+          where: {
+            meetingId,
+            senderId: userId,
+            receiverId: participation.meeting.hostId,
+            type: 'PARTICIPATION_REQUEST',
+          },
+        });
+      } else if (isHost) {
+        await tx.notification.create({
+          data: {
+            meetingId,
+            receiverId: participation.userId,
+            senderId: userId,
+            type: NotificationType.PARTICIPATION_REJECTED,
+            isRead: false,
+          },
+        });
+
+        await tx.notification.deleteMany({
+          where: {
+            meetingId,
+            senderId: participation.userId,
+            receiverId: userId,
+            type: NotificationType.PARTICIPATION_REQUEST,
+          },
+        });
+      }
+
+      return;
+    });
+  }
 }

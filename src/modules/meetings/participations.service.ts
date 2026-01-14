@@ -5,6 +5,12 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  Participation,
+  ParticipationStatus,
+  NotificationType,
+} from '@prisma/client';
+import { ParticipationUpdateItem } from './dto/update-participation.dto';
 
 @Injectable()
 export class ParticipationsService {
@@ -90,5 +96,75 @@ export class ParticipationsService {
       bio: p.user.bio,
       status: p.status,
     }));
+  }
+
+  async updateStatuses(
+    meetingId: number,
+    userId: number,
+    updates: ParticipationUpdateItem[],
+  ) {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+      select: { hostId: true },
+    });
+
+    if (!meeting) throw new NotFoundException('모임을 찾을 수 없습니다.');
+    if (meeting.hostId !== userId) {
+      throw new ForbiddenException('호스트만 신청 상태를 변경할 수 있습니다.');
+    }
+    return await this.prisma.$transaction(async (tx) => {
+      const results: Participation[] = [];
+
+      for (const update of updates) {
+        const currentParticipation = await tx.participation.findUnique({
+          where: { id: update.participationId },
+        });
+
+        if (!currentParticipation) continue;
+
+        if (currentParticipation.status === update.status) {
+          results.push(currentParticipation);
+          continue;
+        }
+
+        const updatedParticipation = await tx.participation.update({
+          where: {
+            id: update.participationId,
+            meetingId: meetingId,
+          },
+          data: { status: update.status },
+        });
+
+        await tx.notification.updateMany({
+          where: {
+            meetingId: meetingId,
+            receiverId: userId,
+            senderId: updatedParticipation.userId,
+            type: NotificationType.PARTICIPATION_REQUEST,
+            isRead: false,
+          },
+          data: { isRead: true },
+        });
+
+        if (update.status !== ParticipationStatus.PENDING) {
+          await tx.notification.create({
+            data: {
+              meetingId: meetingId,
+              receiverId: updatedParticipation.userId,
+              senderId: userId,
+              type:
+                update.status === ParticipationStatus.ACCEPTED
+                  ? NotificationType.PARTICIPATION_ACCEPTED
+                  : NotificationType.PARTICIPATION_REJECTED,
+              isRead: false,
+            },
+          });
+        }
+
+        results.push(updatedParticipation);
+      }
+
+      return results;
+    });
   }
 }

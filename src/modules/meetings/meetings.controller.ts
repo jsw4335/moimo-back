@@ -11,6 +11,7 @@ import {
   Req,
   Param,
   ParseIntPipe,
+  Put,
 } from '@nestjs/common';
 import * as express from 'express';
 import { MeetingsService } from './meetings.service';
@@ -19,6 +20,7 @@ import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { MeetingPageOptionsDto } from './dto/meeting-page-options.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
+import { ParticipationUpdateItem } from './dto/update-participation.dto';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -119,5 +121,19 @@ export class MeetingsController {
         return res.status(error.getStatus()).send();
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }
+  }
+
+  @Put(':meetingId/participate')
+  @UseGuards(JwtAuthGuard)
+  async updateParticipationStatuses(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Body() updates: ParticipationUpdateItem[],
+    @Req() req: express.Request & { user: JwtPayload },
+  ) {
+    return this.participationsService.updateStatuses(
+      meetingId,
+      req.user.id,
+      updates,
+    );
   }
 }

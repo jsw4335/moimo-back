@@ -422,7 +422,7 @@ export class UsersService {
       );
 
       return { accessToken: newAccessToken, refreshToken };
-    } catch (err: any) {
+    } catch (err) {
       if (err instanceof TokenExpiredError) {
         const decoded = this.jwtService.decode<JwtPayload | null>(refreshToken);
         if (!decoded || typeof decoded === 'string') {
@@ -553,5 +553,19 @@ export class UsersService {
     });
 
     return;
+  }
+
+  generateAccessToken(payload: any) {
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '15m', // accessToken은 짧게
+    });
+  }
+
+  generateRefreshToken(payload: any) {
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '7d', // refreshToken은 길게
+    });
   }
 }

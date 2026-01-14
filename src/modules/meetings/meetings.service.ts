@@ -6,9 +6,15 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
-import { PageOptionsDto, MeetingSort } from './dto/page-options.dto';
+import {
+  MeetingPageOptionsDto,
+  MeetingSort,
+} from './dto/meeting-page-options.dto';
 import { Prisma } from '@prisma/client';
 import axios from 'axios';
+import { PageDto } from '../common/dto/page.dto';
+import { PageMetaDto } from '../common/dto/page-meta.dto';
+import { MeetingItemDto } from './dto/meeting-item.dto';
 
 interface KakaoAddressDocument {
   x: string;
@@ -70,13 +76,19 @@ export class MeetingsService {
     });
   }
 
-  async findAll(dto: PageOptionsDto) {
-    const { page = 1, limit = 10, sort, interestFilter, finishedFilter } = dto;
+  async findAll(dto: MeetingPageOptionsDto): Promise<PageDto<MeetingItemDto>> {
+    const {
+      page = 1,
+      limit = 10,
+      sort = MeetingSort.NEW,
+      interestFilter = 'ALL',
+      finishedFilter = false,
+    } = dto;
 
     const skip = (page - 1) * limit;
     const where: Prisma.MeetingWhereInput = {};
 
-    if (finishedFilter === 'false') {
+    if (!finishedFilter) {
       where.meetingDate = { gte: new Date() };
     }
 
@@ -92,9 +104,6 @@ export class MeetingsService {
         break;
       case MeetingSort.DEADLINE:
         orderBy = { meetingDate: 'asc' };
-        break;
-      case MeetingSort.POPULAR:
-        orderBy = { participations: { _count: 'desc' } };
         break;
       case MeetingSort.NEW:
       default:
@@ -118,7 +127,7 @@ export class MeetingsService {
         }),
       ]);
 
-      const mappedData = meetings.map((meeting) => ({
+      const mappedData: MeetingItemDto[] = meetings.map((meeting) => ({
         meetingId: meeting.id,
         title: meeting.title,
         interestName: meeting.interest.name,
@@ -128,15 +137,7 @@ export class MeetingsService {
         meetingDate: meeting.meetingDate,
       }));
 
-      return {
-        data: mappedData,
-        meta: {
-          totalCount,
-          page,
-          limit,
-          totalPages: Math.ceil(totalCount / limit),
-        },
-      };
+      return new PageDto(mappedData, new PageMetaDto(totalCount, page, limit));
     } catch {
       throw new InternalServerErrorException(
         '모임 목록을 가져오는 중 오류가 발생했습니다.',
@@ -180,54 +181,5 @@ export class MeetingsService {
         bio: meeting.host.bio || '',
       },
     };
-  }
-
-  async createParticipation(meetingId: number, userId: number) {
-    const meeting = await this.prisma.meeting.findUnique({
-      where: { id: meetingId },
-      select: { hostId: true, title: true },
-    });
-
-    if (!meeting) {
-      throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
-    }
-
-    if (meeting.hostId === userId) {
-      throw new BadRequestException(
-        '호스트는 본인의 모임에 참여 신청을 할 수 없습니다.',
-      );
-    }
-
-    const existingParticipation = await this.prisma.participation.findUnique({
-      where: {
-        userIdMeetingId: { userId, meetingId },
-      },
-    });
-
-    if (existingParticipation) {
-      throw new BadRequestException('이미 참여 신청을 한 모임입니다.');
-    }
-
-    await this.prisma.$transaction([
-      this.prisma.participation.create({
-        data: {
-          meetingId,
-          userId,
-          status: 'PENDING',
-        },
-      }),
-
-      this.prisma.notification.create({
-        data: {
-          meetingId: meetingId,
-          receiverId: meeting.hostId,
-          senderId: userId,
-          type: 'PARTICIPATION_REQUEST',
-          isRead: false,
-        },
-      }),
-    ]);
-
-    return { status: 'PENDING' };
   }
 }

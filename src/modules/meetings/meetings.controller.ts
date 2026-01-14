@@ -102,7 +102,7 @@ export class MeetingsController {
     }
   }
 
-  @Get(':meetingId/participate')
+  @Get(':meetingId/participations')
   @UseGuards(JwtAuthGuard)
   async getApplicants(
     @Param('meetingId', ParseIntPipe) meetingId: number,
@@ -123,7 +123,7 @@ export class MeetingsController {
     }
   }
 
-  @Put(':meetingId/participate')
+  @Put(':meetingId/participations')
   @UseGuards(JwtAuthGuard)
   async updateParticipationStatuses(
     @Param('meetingId', ParseIntPipe) meetingId: number,

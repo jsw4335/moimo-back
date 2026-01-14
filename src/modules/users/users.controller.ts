@@ -29,7 +29,6 @@ export class UsersController {
     private readonly prisma: PrismaService,
   ) {}
 
-  // 회원가입
   @Post('register')
   async register(
     @Body('nickname') nickname: string,
@@ -44,13 +43,11 @@ export class UsersController {
     return { message: '회원가입 성공', user };
   }
 
-  // 전체 유저 조회
   @Get()
   async findAll() {
     return await this.usersService.findAll();
   }
 
-  //로그인
   @Post('login')
   async login(
     @Body(new ValidationPipe()) body: LoginDto,
@@ -60,10 +57,9 @@ export class UsersController {
       body.email,
       body.password,
     );
-    // 1. Authorization 헤더에 담기
+
     res.setHeader('Authorization', `Bearer ${accessToken}`);
 
-    // 2. 쿠키에도 담기
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: true, // HTTPS 환경에서만
@@ -79,7 +75,7 @@ export class UsersController {
 
     return res.json({ user });
   }
-  //구글 로그인
+
   @Post('login/google')
   async loginWithGoogle(
     @Body() body: { code: string; redirectUri: string },
@@ -88,10 +84,8 @@ export class UsersController {
     const { code, redirectUri } = body;
     const { accessToken, refreshToken, user } =
       await this.usersService.loginWithGoogle(code, redirectUri);
-    // 1. Authorization 헤더에 담기
-    res.setHeader('Authorization', `Bearer ${accessToken}`);
 
-    // 2. 쿠키에도 담기
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: true, // HTTPS 환경에서만
@@ -117,7 +111,6 @@ export class UsersController {
     return res.status(200).send();
   }
 
-  // // 토큰 검증 API
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Req() req: Request & { user: JwtPayload }) {
@@ -131,13 +124,13 @@ export class UsersController {
 
     return {
       isNewUser: !foundUser.bio,
-      id: 12,
+      id: foundUser.id,
       email: foundUser.email,
       nickname: foundUser.nickname ?? null,
 
       bio: foundUser.bio,
       // TODO: interest목록 불러오는 로직 추가하기
-      profile_image: '추가해야함',
+      profile_image: foundUser.image,
     };
   }
 
@@ -156,7 +149,6 @@ export class UsersController {
   @Post('check-nickname')
   async checkNickname(@Body('nickname') nickname: string) {
     const available = await this.usersService.isNicknameAvailable(nickname);
-    console.log(available);
 
     if (!available) {
       throw new ConflictException();
@@ -168,7 +160,6 @@ export class UsersController {
   @Post('check-email')
   async checkEmail(@Body('email') email: string) {
     const available = await this.usersService.isEmailAvailable(email);
-    console.log(available);
 
     if (!available) {
       throw new ConflictException();

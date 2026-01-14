@@ -12,7 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { TokenExpiredError } from 'jsonwebtoken';
 import axios from 'axios';
-import { User } from '@prisma/client'; // Prisma 모델 타입 가져오기
+import { User } from '@prisma/client';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
 import 'dotenv/config';
 import type { JwtPayload } from 'src/auth/jwt-payload.interface';
@@ -21,7 +21,6 @@ import type { Bucket, File } from '@google-cloud/storage';
 import { JWTInput } from 'google-auth-library';
 import { MailsService } from '../mails/mails.service';
 
-//구글 토큰 엔드포인트 응답 구조를 타입으로 정의
 interface GoogleTokenResponse {
   access_token: string;
   expires_in: number;
@@ -44,10 +43,9 @@ export interface ResetTokenPayload {
   email: string;
   code: string;
   purpose: 'password_reset';
-  exp: number; // JWT 표준 claim
-  iat?: number; // JWT 발급 시간 (optional)
+  exp: number;
+  iat?: number;
 }
-
 @Injectable()
 export class UsersService {
   private bucket: Bucket;
@@ -65,7 +63,6 @@ export class UsersService {
     this.bucket = storage.bucket(process.env.GCS_BUCKET_NAME || '');
   }
 
-  // 일반 회원가입
   async registerUser(
     nickname: string,
     email: string,
@@ -107,11 +104,11 @@ export class UsersService {
       );
     }
   }
-  // 전체 유저 조회
+
   async findAll(): Promise<User[]> {
     return await this.prisma.user.findMany();
   }
-  //구글로그인
+
   async loginWithGoogle(
     code: string,
     redirectUri: string,
@@ -121,7 +118,6 @@ export class UsersService {
     user: { isNewUser: boolean; email: string; nickname: string };
   }> {
     try {
-      // 1. 구글 토큰 교환
       const tokenRes = await axios.post<GoogleTokenResponse>(
         'https://oauth2.googleapis.com/token',
         {
@@ -136,7 +132,6 @@ export class UsersService {
 
       const googleAccessToken = tokenRes.data.access_token;
 
-      // 2. 사용자 정보 조회
       const userInfoRes = await axios.get<GoogleUserInfo>(
         'https://www.googleapis.com/oauth2/v2/userinfo',
         { headers: { Authorization: `Bearer ${googleAccessToken}` } },
@@ -144,26 +139,21 @@ export class UsersService {
 
       const { email, name } = userInfoRes.data;
 
-      // 3. DB 확인
       let user: User | null = await this.prisma.user.findUnique({
         where: { email },
       });
 
       if (!user) {
-        // 신규 회원 → DB에 바로 생성
         user = await this.prisma.user.create({
           data: {
             email,
             nickname: name,
-            // TODO: 닉네임 받아오는 로직
           },
         });
       }
 
-      // 4. refreshToken 확인 및 발급/갱신
       let refreshToken = user.refreshToken;
       if (!refreshToken) {
-        // 없으면 새로 발급
         refreshToken = this.jwtService.sign(
           { id: user.id, email: user.email },
           { secret: process.env.JWT_SECRET, expiresIn: '7d' },
@@ -173,15 +163,12 @@ export class UsersService {
           data: { refreshToken },
         });
       } else {
-        // 있으면 검증
         try {
           this.jwtService.verify(refreshToken, {
             secret: process.env.JWT_SECRET,
           });
-          // 유효하면 그대로 사용
         } catch (err: any) {
           if (err instanceof TokenExpiredError) {
-            // 만료 → 새로 발급
             refreshToken = this.jwtService.sign(
               { id: user.id, email: user.email },
               { secret: process.env.JWT_SECRET, expiresIn: '7d' },
@@ -198,13 +185,11 @@ export class UsersService {
         }
       }
 
-      // 5. accessToken은 항상 새로 발급
       const accessToken = this.jwtService.sign(
         { id: user.id, email: user.email },
         { secret: process.env.JWT_SECRET, expiresIn: '1h' },
       );
 
-      // 6. 응답 반환
       return {
         accessToken,
         refreshToken,
@@ -225,9 +210,8 @@ export class UsersService {
       );
     }
   }
-  //일반로그인
+
   async login(email: string, password: string) {
-    // 1. 사용자 조회
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !user.password) {
       throw new UnauthorizedException(
@@ -235,7 +219,6 @@ export class UsersService {
       );
     }
 
-    // 2. 비밀번호 검증
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException(
@@ -243,10 +226,8 @@ export class UsersService {
       );
     }
 
-    // 3. refreshToken 확인
     let refreshToken = user.refreshToken;
     if (!refreshToken) {
-      // 없으면 새로 발급
       refreshToken = this.jwtService.sign(
         { id: user.id, email: user.email },
         { secret: process.env.JWT_SECRET, expiresIn: '7d' },
@@ -256,15 +237,12 @@ export class UsersService {
         data: { refreshToken },
       });
     } else {
-      // 있으면 검증
       try {
         this.jwtService.verify(refreshToken, {
           secret: process.env.JWT_SECRET,
         });
-        // 유효하면 그대로 사용
       } catch (err) {
         if (err instanceof TokenExpiredError) {
-          // 만료 → 새로 발급
           refreshToken = this.jwtService.sign(
             { id: user.id, email: user.email },
             { secret: process.env.JWT_SECRET, expiresIn: '7d' },
@@ -279,13 +257,11 @@ export class UsersService {
       }
     }
 
-    // 4. accessToken은 항상 새로 발급
     const accessToken = this.jwtService.sign(
       { id: user.id, email: user.email },
       { secret: process.env.JWT_SECRET, expiresIn: '1h' },
     );
 
-    // 5. 응답 반환
     return {
       accessToken,
       refreshToken,
@@ -299,12 +275,10 @@ export class UsersService {
   async updateUser(
     userId: number,
     dto: UpdateExtraInfoDto,
-    file?: Express.Multer.File, // 업로드된 파일 (선택적)
+    file?: Express.Multer.File,
   ) {
-    // 1. 유저 ID가 없으면 에러 발생
     if (!userId) throw new Error('User ID is missing');
 
-    // 2. 닉네임 중복 체크 (자기 자신 제외)
     if (dto.nickname) {
       const exists = await this.prisma.user.findFirst({
         where: { nickname: dto.nickname, id: { not: userId } },
@@ -313,9 +287,7 @@ export class UsersService {
       if (exists) throw new ConflictException('Nickname already in use');
     }
 
-    // 3. 파일 업로드 처리 (Google Cloud Storage)
     let imageUrl: string | undefined;
-    console.log(file, `!이 없습니다`);
 
     if (file) {
       const blob = this.bucket.file(
@@ -340,16 +312,6 @@ export class UsersService {
       });
     }
 
-    console.log(
-      'buffer length:',
-      file?.buffer?.length,
-      'mimetype:',
-      file?.mimetype,
-      'originalname:',
-      file?.originalname,
-    );
-
-    // 4. 닉네임/소개/이미지 업데이트 (DB 반영)
     const userBaseUpdate = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -366,16 +328,13 @@ export class UsersService {
       },
     });
 
-    // 5. interests 동기화 (DTO에서 이미 배열로 파싱됨)
     if (dto.interests && dto.interests.length > 0) {
-      // 유효한 interest id인지 확인
       const validInterests = await this.prisma.interest.findMany({
         where: { id: { in: dto.interests } },
         select: { id: true },
       });
       const validIds = new Set(validInterests.map((i) => i.id));
 
-      // 현재 유저의 연결된 관심사 조회
       const currentLinks = await this.prisma.userInterest.findMany({
         where: { userId },
         select: { id: true, interestId: true },
@@ -383,12 +342,10 @@ export class UsersService {
 
       const desired = Array.from(validIds);
 
-      // 삭제할 관심사
       const toDelete = currentLinks
         .filter((link) => !validIds.has(link.interestId))
         .map((link) => link.id);
 
-      // 추가할 관심사
       const currentIds = new Set(currentLinks.map((l) => l.interestId));
       const toAdd = desired.filter((id) => !currentIds.has(id));
 
@@ -408,13 +365,11 @@ export class UsersService {
       ]);
     }
 
-    // 6. 최신 관심사 목록 조회
     const interests = await this.prisma.userInterest.findMany({
       where: { userId },
       include: { interest: true },
     });
 
-    // 7. 최종 반환
     return {
       id: userBaseUpdate.id,
       email: userBaseUpdate.email,
@@ -432,7 +387,6 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  //닉네임 중복체크
   async isNicknameAvailable(nickname: string): Promise<boolean> {
     const existing = await this.prisma.user.findUnique({
       where: { nickname },
@@ -440,17 +394,15 @@ export class UsersService {
 
     return !existing;
   }
-  //이메일 중복체크
+
   async isEmailAvailable(email: string): Promise<boolean> {
     const existing = await this.prisma.user.findFirst({
       where: { email },
     });
-    console.log(email);
-    console.log(existing);
 
     return !existing;
   }
-  //새 토큰 발급
+
   async refreshAccessToken(refreshToken: string) {
     try {
       const { email } = this.jwtService.verify<JwtPayload>(refreshToken, {
@@ -472,7 +424,6 @@ export class UsersService {
       return { accessToken: newAccessToken, refreshToken };
     } catch (err: any) {
       if (err instanceof TokenExpiredError) {
-        // 새 refreshToken 발급
         const decoded = this.jwtService.decode<JwtPayload | null>(refreshToken);
         if (!decoded || typeof decoded === 'string') {
           throw new UnauthorizedException('Refresh token decode 실패');
@@ -509,33 +460,28 @@ export class UsersService {
       throw new NotFoundException();
     }
 
-    // 6자리 인증번호 생성
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 만료시간 (15분)
-    const expiresIn = 3 * 60; // 초 단위
+    const expiresIn = 3 * 60;
 
-    // JWT 토큰 발급 (resetToken)
     const resetToken = this.jwtService.sign(
       {
         email,
         code,
         purpose: 'password_reset',
       },
-      { secret: process.env.JWT_SECRET, expiresIn: expiresIn }, // JWT 자체 만료도 설정
+      { secret: process.env.JWT_SECRET, expiresIn: expiresIn },
     );
 
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        resetToken, // 토큰 자체 저장
+        resetToken,
       },
     });
 
-    // TODO: 실제 이메일 발송 로직 추가 (code를 이메일로 전송)
-    console.log(`Send email to ${email} with code ${code}`);
     await this.mailService.sendResetCode(email, code);
-    // 개발 환경에서는 테스트용으로 코드도 반환
+
     return { code };
   }
 
@@ -548,7 +494,6 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // DB에 저장된 resetToken을 검증
     if (!user.resetToken) {
       throw new BadRequestException('No reset token found');
     }
@@ -563,7 +508,6 @@ export class UsersService {
       throw new GoneException();
     }
 
-    // 이메일/코드 검증
     if (payload.email !== email) {
       throw new BadRequestException('Email does not match');
     }
@@ -573,7 +517,6 @@ export class UsersService {
       //코드가 틀리면 DB에 resetToken 삭제? 어떻게 처리할까
     }
 
-    // 성공 시 resetToken 반환 (프론트는 이걸 confirm 단계에서 사용)
     return { resetToken: user.resetToken };
   }
 
@@ -590,8 +533,6 @@ export class UsersService {
     }
 
     if (payload.purpose != 'password_reset') {
-      console.log(payload);
-
       throw new BadRequestException();
     }
 
@@ -602,13 +543,12 @@ export class UsersService {
       throw new NotFoundException();
     }
 
-    // 비밀번호 해시 후 저장
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
         password: hashedPassword,
-        resetToken: null, // 토큰 무효화
+        resetToken: null,
       },
     });
 

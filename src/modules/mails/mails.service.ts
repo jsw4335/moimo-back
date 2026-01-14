@@ -13,11 +13,6 @@ export class MailsService {
         pass: process.env.MAIL_PASS,
       },
     });
-    console.log(
-      process.env.MAIL_USER,
-      process.env.MAIL_PASS,
-      '1111111111111111111111111111111111111111111111111',
-    );
   }
 
   async sendResetCode(email: string, code: string) {

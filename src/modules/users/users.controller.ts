@@ -20,14 +20,10 @@ import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @Post('register')
   async register(

@@ -11,6 +11,7 @@ import {
   Put,
   UseInterceptors,
   UploadedFile,
+  ConflictException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
@@ -19,11 +20,14 @@ import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import multer from 'multer';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // 회원가입
   @Post('register')
@@ -139,14 +143,7 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Put('user-update')
-  @UseInterceptors(
-    FileInterceptor(
-      'file',
-      {
-        storage: multer.memoryStorage(),
-      }, // ✅ 여기서 직접 지정 가능
-    ),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   async updateUser(
     @Req() req: Request & { user: JwtPayload },
     @Body() dto: UpdateExtraInfoDto,
@@ -155,25 +152,48 @@ export class UsersController {
     const userId = req.user.id;
     return this.usersService.updateUser(userId, dto, file);
   }
+
   @Post('check-nickname')
   async checkNickname(@Body('nickname') nickname: string) {
     const available = await this.usersService.isNicknameAvailable(nickname);
     console.log(available);
 
     if (!available) {
-      throw new UnauthorizedException();
+      throw new ConflictException();
     }
 
     return;
   }
+
   @Post('check-email')
   async checkEmail(@Body('email') email: string) {
     const available = await this.usersService.isEmailAvailable(email);
     console.log(available);
 
     if (!available) {
-      throw new UnauthorizedException();
+      throw new ConflictException();
     }
     return;
+  }
+
+  @Post('password-reset/request')
+  async requestReset(@Body('email') email: string) {
+    return await this.usersService.requestPasswordReset(email);
+  }
+
+  @Post('password-reset/verify')
+  async verifyCode(@Body('email') email: string, @Body('code') code: string) {
+    return await this.usersService.verifyPasswordResetCode(email, code);
+  }
+
+  @Put('password-reset/confirm')
+  async confirmReset(
+    @Body('resetToken') resetToken: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    return await this.usersService.confirmPasswordReset(
+      resetToken,
+      newPassword,
+    );
   }
 }

@@ -3,6 +3,9 @@ import {
   ConflictException,
   InternalServerErrorException,
   UnauthorizedException,
+  NotFoundException,
+  BadRequestException,
+  GoneException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
@@ -16,6 +19,7 @@ import type { JwtPayload } from 'src/auth/jwt-payload.interface';
 import { Storage } from '@google-cloud/storage';
 import type { Bucket, File } from '@google-cloud/storage';
 import { JWTInput } from 'google-auth-library';
+import { MailsService } from '../mails/mails.service';
 
 //구글 토큰 엔드포인트 응답 구조를 타입으로 정의
 interface GoogleTokenResponse {
@@ -36,6 +40,13 @@ interface GoogleUserInfo {
   picture: string;
   locale: string;
 }
+export interface ResetTokenPayload {
+  email: string;
+  code: string;
+  purpose: 'password_reset';
+  exp: number; // JWT 표준 claim
+  iat?: number; // JWT 발급 시간 (optional)
+}
 
 @Injectable()
 export class UsersService {
@@ -44,6 +55,7 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private readonly mailService: MailsService,
   ) {
     const storage = new Storage({
       projectId: process.env.GCP_PROJECT_ID,
@@ -486,5 +498,120 @@ export class UsersService {
 
       throw new UnauthorizedException('Refresh 토큰 검증 실패');
     }
+  }
+
+  async requestPasswordReset(email: string) {
+    const user: User | null = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException();
+    }
+
+    // 6자리 인증번호 생성
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 만료시간 (15분)
+    const expiresIn = 3 * 60; // 초 단위
+
+    // JWT 토큰 발급 (resetToken)
+    const resetToken = this.jwtService.sign(
+      {
+        email,
+        code,
+        purpose: 'password_reset',
+      },
+      { secret: process.env.JWT_SECRET, expiresIn: expiresIn }, // JWT 자체 만료도 설정
+    );
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken, // 토큰 자체 저장
+      },
+    });
+
+    // TODO: 실제 이메일 발송 로직 추가 (code를 이메일로 전송)
+    console.log(`Send email to ${email} with code ${code}`);
+    await this.mailService.sendResetCode(email, code);
+    // 개발 환경에서는 테스트용으로 코드도 반환
+    return { code };
+  }
+
+  async verifyPasswordResetCode(email: string, code: string) {
+    const user: User | null = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // DB에 저장된 resetToken을 검증
+    if (!user.resetToken) {
+      throw new BadRequestException('No reset token found');
+    }
+
+    let payload: ResetTokenPayload;
+    try {
+      payload = this.jwtService.verify<ResetTokenPayload>(user.resetToken, {
+        secret: process.env.JWT_SECRET,
+      });
+    } catch (err) {
+      console.error(err);
+      throw new GoneException();
+    }
+
+    // 이메일/코드 검증
+    if (payload.email !== email) {
+      throw new BadRequestException('Email does not match');
+    }
+    if (payload.code !== code) {
+      throw new BadRequestException('Invalid verification code');
+
+      //코드가 틀리면 DB에 resetToken 삭제? 어떻게 처리할까
+    }
+
+    // 성공 시 resetToken 반환 (프론트는 이걸 confirm 단계에서 사용)
+    return { resetToken: user.resetToken };
+  }
+
+  async confirmPasswordReset(resetToken: string, newPassword: string) {
+    let payload: ResetTokenPayload;
+    try {
+      payload = this.jwtService.verify<ResetTokenPayload>(resetToken, {
+        secret: process.env.JWT_SECRET,
+      });
+    } catch (err) {
+      console.error(err);
+
+      throw new BadRequestException();
+    }
+
+    if (payload.purpose != 'password_reset') {
+      console.log(payload);
+
+      throw new BadRequestException();
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+    });
+    if (!user) {
+      throw new NotFoundException();
+    }
+
+    // 비밀번호 해시 후 저장
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null, // 토큰 무효화
+      },
+    });
+
+    return;
   }
 }

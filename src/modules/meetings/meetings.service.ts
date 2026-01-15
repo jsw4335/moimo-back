@@ -87,19 +87,18 @@ export class MeetingsService {
         data: {
           title: dto.title,
           description: dto.description,
-          maxParticipants: Number(dto.maxParticipants), // ✅ form-data 대응 숫자 변환
+          maxParticipants: Number(dto.maxParticipants),
           meetingDate: new Date(dto.meetingDate),
-          interestId: Number(dto.interestId), // ✅ form-data 대응 숫자 변환
+          interestId: Number(dto.interestId),
           address: dto.address,
           latitude: latitude,
           longitude: longitude,
-          image: imageUrl, // ✅ 이미지 URL 저장
+          image: imageUrl,
           hostId: hostId,
-          currentParticipants: 1, // ✅ 호스트 포함 1명 시작
+          currentParticipants: 1,
         },
       });
 
-      // 4. 호스트 본인을 참여 명단에 ACCEPTED 상태로 추가 ✅
       await tx.participation.create({
         data: {
           meetingId: meeting.id,
@@ -165,6 +164,7 @@ export class MeetingsService {
       const mappedData: MeetingItemDto[] = meetings.map((meeting) => ({
         meetingId: meeting.id,
         title: meeting.title,
+        meetingImage: meeting.image,
         interestName: meeting.interest.name,
         maxParticipants: meeting.maxParticipants,
         currentParticipants: meeting.currentParticipants,

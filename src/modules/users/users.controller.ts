@@ -138,7 +138,7 @@ export class UsersController {
     console.log('Body:', dto);
     console.log('Multer:', multer);
     console.log('Raw body:', req.body);
-    console.log('Raw file:', req.file);
+    console.log('Raw file:', (req as any).file);
 
     const userId = req.user.id;
     return this.usersService.updateUser(userId, dto, file);

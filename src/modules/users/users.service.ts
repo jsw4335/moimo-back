@@ -16,10 +16,9 @@ import { User } from '@prisma/client';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
 import 'dotenv/config';
 import type { JwtPayload } from 'src/auth/jwt-payload.interface';
-import { Storage } from '@google-cloud/storage';
 import type { Bucket, File } from '@google-cloud/storage';
-import { JWTInput } from 'google-auth-library';
 import { MailsService } from '../mails/mails.service';
+import { UploadService } from '../upload/upload.service';
 
 interface GoogleTokenResponse {
   access_token: string;
@@ -54,14 +53,8 @@ export class UsersService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private readonly mailService: MailsService,
-  ) {
-    const storage = new Storage({
-      projectId: process.env.GCP_PROJECT_ID,
-      credentials: JSON.parse(process.env.GCP_KEY_JSON!) as JWTInput,
-    });
-
-    this.bucket = storage.bucket(process.env.GCS_BUCKET_NAME || '');
-  }
+    private uploadService: UploadService,
+  ) {}
 
   async registerUser(
     nickname: string,
@@ -272,6 +265,7 @@ export class UsersService {
       },
     };
   }
+
   async updateUser(
     userId: number,
     dto: UpdateExtraInfoDto,
@@ -288,28 +282,10 @@ export class UsersService {
     }
 
     let imageUrl: string | undefined;
+    console.log(file);
 
     if (file) {
-      const blob = this.bucket.file(
-        `${userId}-${Date.now()}-${file.originalname}`,
-      );
-      const blobStream = blob.createWriteStream({
-        resumable: false,
-        contentType: file.mimetype,
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        blobStream.on('error', (err) => {
-          console.error('GCS upload error:', err);
-          reject(err);
-        });
-
-        blobStream.on('finish', () => {
-          imageUrl = `https://storage.googleapis.com/${this.bucket.name}/${blob.name}`;
-          resolve();
-        });
-        blobStream.end(file.buffer);
-      });
+      imageUrl = await this.uploadService.uploadFile('profile', file);
     }
 
     const userBaseUpdate = await this.prisma.user.update({
@@ -567,5 +543,41 @@ export class UsersService {
       secret: process.env.JWT_SECRET,
       expiresIn: '7d', // refreshToken은 길게
     });
+  }
+
+  async verifyUser(id: number) {
+    console.log(id);
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+    console.log(user, '유저');
+
+    if (!user) {
+      return {
+        authenticated: false,
+      };
+    }
+    const currentLinks = await this.prisma.userInterest.findMany({
+      where: { userId: id },
+      select: { interestId: true },
+    });
+    const currentIds = currentLinks.map((l) => l.interestId);
+    // interest 테이블에서 조회
+    const interests = await this.prisma.interest.findMany({
+      where: {
+        id: { in: currentIds },
+      },
+    });
+
+    return {
+      authenticated: true,
+      isNewUser: !user.bio,
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+      bio: user.bio,
+      profile_image: user.image,
+      interests,
+    };
   }
 }

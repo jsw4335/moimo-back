@@ -22,6 +22,7 @@ import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';
 import { Cookies } from '../../common/cookies.decorator';
+import { OptionalJwtAuthGuard } from 'src/auth/optional-jwt-auth.guard';
 
 @Controller('users')
 export class UsersController {
@@ -102,27 +103,14 @@ export class UsersController {
     return res.status(200).send();
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('me')
-  async getMe(@Req() req: Request & { user: JwtPayload }) {
-    const user = req.user;
-
-    const foundUser = await this.usersService.findById(user.id);
-
-    if (!foundUser) {
-      throw new UnauthorizedException('유효하지 않은 사용자입니다.');
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get('verify')
+  async verifyToken(@Req() req: Request & { user?: JwtPayload }) {
+    console.log(req.user);
+    if (!req.user) {
+      return { authenticated: false };
     }
-
-    return {
-      isNewUser: !foundUser.bio,
-      id: foundUser.id,
-      email: foundUser.email,
-      nickname: foundUser.nickname ?? null,
-
-      bio: foundUser.bio,
-      // TODO: interest목록 불러오는 로직 추가하기
-      profile_image: foundUser.image,
-    };
+    return this.usersService.verifyUser(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)

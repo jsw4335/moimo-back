@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { MailsModule } from '../mails/mails.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { memoryStorage } from 'multer';
       signOptions: { expiresIn: '1h' },
     }),
     MailsModule,
+    UploadModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, PrismaService],

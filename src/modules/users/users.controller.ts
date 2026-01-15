@@ -125,20 +125,27 @@ export class UsersController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+   @UseGuards(JwtAuthGuard)
   @Put('user-update')
-  @UseInterceptors(FileInterceptor('file', { storage: multer.memoryStorage() }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: multer.diskStorage({
+        destination: './uploads', // 저장 경로
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + extname(file.originalname));
+        },
+      }),
+    }),
+  )
   async updateUser(
     @Req() req: Request & { user: JwtPayload },
     @Body() dto: UpdateExtraInfoDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    console.log('Content-Type:', req.headers['content-type']);
     console.log('File:', file);
     console.log('Body:', dto);
-    console.log('Multer:', multer);
-    console.log('Raw body:', req.body);
-    console.log('Raw file:', (req as any).file);
 
     const userId = req.user.id;
     return this.usersService.updateUser(userId, dto, file);

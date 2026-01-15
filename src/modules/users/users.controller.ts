@@ -133,9 +133,15 @@ export class UsersController {
     @Body() dto: UpdateExtraInfoDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
+    console.log('Content-Type:', req.headers['content-type']);
+    console.log('File:', file);
+    console.log('Body:', dto);
+    console.log('Multer:', multer);
+
     const userId = req.user.id;
     return this.usersService.updateUser(userId, dto, file);
   }
+
 
   @Post('check-nickname')
   async checkNickname(@Body('nickname') nickname: string) {

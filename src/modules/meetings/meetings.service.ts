@@ -193,10 +193,7 @@ export class MeetingsService {
     const now = new Date();
 
     let where: Prisma.MeetingWhereInput = {
-      OR: [
-        { hostId: userId },
-        { participations: { some: { userId: userId } } },
-      ],
+      meetingDeleted: false,
     };
 
     if (statusQuery === 'pending') {
@@ -221,6 +218,11 @@ export class MeetingsService {
           { participations: { some: { userId: userId, status: 'ACCEPTED' } } },
         ],
       };
+    } else {
+      where.OR = [
+        { hostId: userId },
+        { participations: { some: { userId: userId } } },
+      ];
     }
     try {
       const [totalCount, meetings] = await Promise.all([
@@ -230,9 +232,6 @@ export class MeetingsService {
           skip,
           take: limit,
           include: {
-            _count: {
-              select: { participations: { where: { status: 'ACCEPTED' } } },
-            },
             interest: { select: { name: true } },
             participations: {
               where: { userId: userId },
@@ -255,7 +254,7 @@ export class MeetingsService {
           title: m.title,
           interestName: m.interest.name,
           maxParticipants: m.maxParticipants,
-          currentParticipants: m._count.participations,
+          currentParticipants: m.currentParticipants,
           address: m.address,
           meetingDate: m.meetingDate,
           status: myStatus,

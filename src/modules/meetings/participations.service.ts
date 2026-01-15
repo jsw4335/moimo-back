@@ -258,7 +258,7 @@ export class ParticipationsService {
             meetingId,
             senderId: userId,
             receiverId: participation.meeting.hostId,
-            type: 'PARTICIPATION_REQUEST',
+            type: NotificationType.PARTICIPATION_REQUEST,
           },
         });
       } else if (isHost) {

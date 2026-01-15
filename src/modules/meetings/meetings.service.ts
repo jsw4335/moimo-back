@@ -17,6 +17,7 @@ import axios from 'axios';
 import { PageDto } from '../common/dto/page.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { MeetingItemDto, MyMeetingDto } from './dto/meeting-item.dto';
+import { UploadService } from '../upload/upload.service';
 
 interface KakaoAddressDocument {
   x: string;
@@ -30,11 +31,29 @@ interface KakaoAddressResponse {
 
 @Injectable()
 export class MeetingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly uploadService: UploadService,
+  ) {}
 
-  async create(dto: CreateMeetingDto, hostId: number) {
+  async create(
+    dto: CreateMeetingDto,
+    hostId: number,
+    file?: Express.Multer.File,
+  ) {
     let latitude: number;
     let longitude: number;
+    let imageUrl: string | null = null;
+
+    if (file) {
+      try {
+        imageUrl = await this.uploadService.uploadFile('meeting', file);
+      } catch {
+        throw new InternalServerErrorException(
+          '이미지 업로드 중 오류가 발생했습니다.',
+        );
+      }
+    }
 
     try {
       const kakaoResponse = await axios.get<KakaoAddressResponse>(
@@ -63,18 +82,33 @@ export class MeetingsService {
       );
     }
 
-    await this.prisma.meeting.create({
-      data: {
-        title: dto.title,
-        description: dto.description,
-        maxParticipants: dto.maxParticipants,
-        meetingDate: new Date(dto.meetingDate),
-        interestId: dto.interestId,
-        address: dto.address,
-        latitude: latitude,
-        longitude: longitude,
-        hostId: hostId,
-      },
+    return await this.prisma.$transaction(async (tx) => {
+      const meeting = await tx.meeting.create({
+        data: {
+          title: dto.title,
+          description: dto.description,
+          maxParticipants: Number(dto.maxParticipants), // ✅ form-data 대응 숫자 변환
+          meetingDate: new Date(dto.meetingDate),
+          interestId: Number(dto.interestId), // ✅ form-data 대응 숫자 변환
+          address: dto.address,
+          latitude: latitude,
+          longitude: longitude,
+          image: imageUrl, // ✅ 이미지 URL 저장
+          hostId: hostId,
+          currentParticipants: 1, // ✅ 호스트 포함 1명 시작
+        },
+      });
+
+      // 4. 호스트 본인을 참여 명단에 ACCEPTED 상태로 추가 ✅
+      await tx.participation.create({
+        data: {
+          meetingId: meeting.id,
+          userId: hostId,
+          status: 'ACCEPTED',
+        },
+      });
+
+      return meeting;
     });
   }
 

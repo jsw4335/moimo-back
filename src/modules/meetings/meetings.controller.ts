@@ -22,6 +22,8 @@ import { MeetingPageOptionsDto } from './dto/meeting-page-options.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { ParticipationUpdateItem } from './dto/update-participation.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadedFile, UseInterceptors } from '@nestjs/common';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -32,14 +34,17 @@ export class MeetingsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('meetingImage'))
   async create(
     @Body() dto: CreateMeetingDto,
+    @UploadedFile() file: Express.Multer.File,
     @Res() res: express.Response,
     @Req() req: express.Request & { user: JwtPayload },
   ) {
     try {
       const hostId = req.user.id;
-      await this.meetingsService.create(dto, hostId);
+
+      await this.meetingsService.create(dto, hostId, file);
 
       return res.status(HttpStatus.CREATED).send();
     } catch (error) {

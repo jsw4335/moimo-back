@@ -91,6 +91,23 @@ export class MeetingsController {
     }
   }
 
+  @Get('search')
+  async search(
+    @Query('keyword') keyword: string,
+    @Res() res: express.Response,
+  ) {
+    try {
+      const result = await this.meetingsService.searchMeetings(keyword);
+
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
   @Get(':id')
   async findOne(
     @Param('id', ParseIntPipe) id: number,

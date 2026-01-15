@@ -328,4 +328,67 @@ export class MeetingsService {
       );
     }
   }
+
+  async searchMeetings(keyword: string) {
+    if (!keyword || keyword.trim() === '') {
+      throw new BadRequestException('검색어를 입력해주세요.');
+    }
+
+    const now = new Date();
+
+    const meetings = await this.prisma.meeting.findMany({
+      where: {
+        meetingDeleted: false,
+        meetingDate: {
+          gte: now,
+        },
+        OR: [
+          {
+            title: {
+              contains: keyword,
+              mode: 'insensitive',
+            },
+          },
+          {
+            interest: {
+              name: {
+                contains: keyword,
+                mode: 'insensitive',
+              },
+            },
+          },
+          {
+            host: {
+              nickname: {
+                contains: keyword,
+                mode: 'insensitive',
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        interest: true,
+        host: {
+          select: {
+            nickname: true,
+          },
+        },
+      },
+      orderBy: {
+        meetingDate: 'asc',
+      },
+    });
+
+    return meetings.map((m) => ({
+      id: m.id,
+      title: m.title,
+      interestName: m.interest.name,
+      currentParticipants: m.currentParticipants,
+      maxParticipants: m.maxParticipants,
+      meetingDate: m.meetingDate,
+      address: m.address,
+      hostNickname: m.host.nickname,
+    }));
+  }
 }

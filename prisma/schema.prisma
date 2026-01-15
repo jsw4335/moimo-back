@@ -21,6 +21,7 @@ enum NotificationType {
   PARTICIPATION_REQUEST
   PARTICIPATION_ACCEPTED
   PARTICIPATION_REJECTED
+  MEETING_DELETED
 }
 
 model User {
@@ -92,6 +93,7 @@ model Meeting {
   address         String   @db.Text
   latitude        Float
   longitude       Float
+  meetingStatus   Boolean  @default(false) @map("meeting_status")
 
   hostId    Int      @map("host_id")
   createdAt DateTime @default(now()) @map("created_at")

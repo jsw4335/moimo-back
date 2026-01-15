@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { MeetingsModule } from './modules/meetings/meetings.module';
 import { InterestsModule } from './modules/interests/interests.module';
+import { ChatsModule } from './modules/chats/chats.module';
 @Module({
   imports: [
     PrismaModule,
@@ -13,6 +14,7 @@ import { InterestsModule } from './modules/interests/interests.module';
     MeetingsModule,
     AuthModule,
     InterestsModule,
+    ChatsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

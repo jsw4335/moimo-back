@@ -201,6 +201,6 @@ export class UsersController {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
     });
 
-    return;
+    return res.status(200).end();
   }
 }

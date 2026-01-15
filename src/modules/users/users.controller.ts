@@ -22,7 +22,7 @@ import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';
 import { Cookies } from 'src/common/cookies.decorator';
-
+import { extname } from 'path';
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

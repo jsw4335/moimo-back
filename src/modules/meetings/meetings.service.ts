@@ -89,6 +89,8 @@ export class MeetingsService {
     const skip = (page - 1) * limit;
     const where: Prisma.MeetingWhereInput = {};
 
+    where.meetingDeleted = false;
+
     if (!finishedFilter) {
       where.meetingDate = { gte: new Date() };
     }
@@ -120,9 +122,6 @@ export class MeetingsService {
           take: limit,
           orderBy: orderBy,
           include: {
-            _count: {
-              select: { participations: { where: { status: 'ACCEPTED' } } },
-            },
             interest: { select: { name: true } },
           },
         }),
@@ -133,7 +132,7 @@ export class MeetingsService {
         title: meeting.title,
         interestName: meeting.interest.name,
         maxParticipants: meeting.maxParticipants,
-        currentParticipants: meeting._count.participations,
+        currentParticipants: meeting.currentParticipants,
         address: meeting.address,
         meetingDate: meeting.meetingDate,
       }));

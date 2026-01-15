@@ -21,6 +21,7 @@ import { LoginDto } from './dto/login.dto';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';
+import { Cookies } from '../../common/cookies.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -56,13 +57,6 @@ export class UsersController {
     );
 
     res.setHeader('Authorization', `Bearer ${accessToken}`);
-
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: true, // HTTPS 환경에서만
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 1000, // 1시간
-    });
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: true,
@@ -183,5 +177,30 @@ export class UsersController {
       resetToken,
       newPassword,
     );
+  }
+
+  @Post('refresh')
+  async refresh(
+    @Cookies('refreshToken') refreshToken: string | undefined,
+    @Res() res: Response,
+  ) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token이 필요합니다.');
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } =
+      await this.usersService.refreshAccessToken(refreshToken);
+
+    // 응답에 새 토큰 심기
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
+
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    });
+
+    return res.status(200).end();
   }
 }

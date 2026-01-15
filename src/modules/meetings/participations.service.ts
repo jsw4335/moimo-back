@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   GoneException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -20,12 +21,23 @@ export class ParticipationsService {
   async createParticipation(meetingId: number, userId: number) {
     const meeting = await this.prisma.meeting.findUnique({
       where: { id: meetingId },
-      select: { hostId: true, meetingDate: true },
+      select: {
+        hostId: true,
+        meetingDate: true,
+        maxParticipants: true,
+        currentParticipants: true,
+        meetingDeleted: true,
+      },
     });
 
     if (!meeting) {
       throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
     }
+
+    if (meeting.meetingDeleted) {
+      throw new GoneException('삭제된 모임에는 신청할 수 없습니다.');
+    }
+
     if (new Date(meeting.meetingDate) < new Date()) {
       throw new BadRequestException(
         '이미 기한이 지난 모임은 신청할 수 없습니다.',
@@ -38,29 +50,35 @@ export class ParticipationsService {
       );
     }
 
+    if (meeting.currentParticipants >= meeting.maxParticipants) {
+      throw new BadRequestException(
+        `이미 정원이 꽉 찬 모임입니다. (최대 ${meeting.maxParticipants}명)`,
+      );
+    }
+
     const existingParticipation = await this.prisma.participation.findUnique({
       where: { userIdMeetingId: { userId, meetingId } },
     });
 
     if (existingParticipation) {
-      throw new BadRequestException('이미 참여 신청을 한 모임입니다.');
+      throw new ConflictException('이미 참여 신청을 한 모임입니다.');
     }
 
     await this.prisma.$transaction([
       this.prisma.participation.create({
-        data: { meetingId, userId, status: 'PENDING' },
+        data: { meetingId, userId, status: ParticipationStatus.PENDING },
       }),
       this.prisma.notification.create({
         data: {
           meetingId,
           receiverId: meeting.hostId,
           senderId: userId,
-          type: 'PARTICIPATION_REQUEST',
+          type: NotificationType.PARTICIPATION_REQUEST,
         },
       }),
     ]);
 
-    return { status: 'PENDING' };
+    return { status: ParticipationStatus.PENDING };
   }
 
   async findApplicants(meetingId: number, userId: number) {

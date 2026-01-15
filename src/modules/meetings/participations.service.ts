@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  GoneException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -15,6 +16,7 @@ import { ParticipationUpdateItem } from './dto/update-participation.dto';
 @Injectable()
 export class ParticipationsService {
   constructor(private prisma: PrismaService) {}
+
   async createParticipation(meetingId: number, userId: number) {
     const meeting = await this.prisma.meeting.findUnique({
       where: { id: meetingId },
@@ -64,11 +66,15 @@ export class ParticipationsService {
   async findApplicants(meetingId: number, userId: number) {
     const meeting = await this.prisma.meeting.findUnique({
       where: { id: meetingId },
-      select: { hostId: true },
+      select: { hostId: true, meetingDeleted: true },
     });
 
     if (!meeting) {
       throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
+    }
+
+    if (meeting.meetingDeleted) {
+      throw new GoneException('삭제된 모임입니다.');
     }
 
     if (meeting.hostId !== userId) {
@@ -110,10 +116,16 @@ export class ParticipationsService {
           hostId: true,
           maxParticipants: true,
           currentParticipants: true,
+          meetingDeleted: true,
         },
       });
 
       if (!meeting) throw new NotFoundException('모임을 찾을 수 없습니다.');
+      if (meeting.meetingDeleted) {
+        throw new GoneException(
+          '삭제된 모임입니다. 상태를 변경할 수 없습니다.',
+        );
+      }
       if (meeting.hostId !== userId) {
         throw new ForbiddenException(
           '호스트만 신청 상태를 변경할 수 있습니다.',
@@ -211,6 +223,10 @@ export class ParticipationsService {
       throw new NotFoundException('참여 정보를 찾을 수 없습니다.');
     }
 
+    if (participation.meeting.meetingDeleted) {
+      throw new GoneException('삭제된 모임의 참여 정보는 변경할 수 없습니다.');
+    }
+
     const isHost = participation.meeting.hostId === userId;
     const isParticipant = participation.userId === userId;
 
@@ -225,6 +241,13 @@ export class ParticipationsService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      if (participation.status === ParticipationStatus.ACCEPTED) {
+        await tx.meeting.update({
+          where: { id: meetingId },
+          data: { currentParticipants: { decrement: 1 } },
+        });
+      }
+
       await tx.participation.delete({
         where: { id: participationId },
       });

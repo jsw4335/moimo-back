@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  GoneException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
@@ -163,13 +164,17 @@ export class MeetingsService {
       throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
     }
 
+    if (meeting.meetingDeleted) {
+      throw new GoneException('삭제된 모임입니다.');
+    }
+
     return {
       id: meeting.id,
       title: meeting.title,
       description: meeting.description,
       interestName: meeting.interest.name,
       maxParticipants: meeting.maxParticipants,
-
+      currentParticipants: meeting.currentParticipants,
       meetingDate: meeting.meetingDate,
       location: {
         address: meeting.address,

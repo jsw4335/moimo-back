@@ -568,4 +568,40 @@ export class UsersService {
       expiresIn: '7d', // refreshToken은 길게
     });
   }
+
+  async verifyUser(id: number) {
+    console.log(id);
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+    console.log(user, '유저');
+
+    if (!user) {
+      return {
+        authenticated: false,
+      };
+    }
+    const currentLinks = await this.prisma.userInterest.findMany({
+      where: { userId: id },
+      select: { interestId: true },
+    });
+    const currentIds = currentLinks.map((l) => l.interestId);
+    // interest 테이블에서 조회
+    const interests = await this.prisma.interest.findMany({
+      where: {
+        id: { in: currentIds },
+      },
+    });
+
+    return {
+      authenticated: true,
+      isNewUser: !user.bio,
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+      bio: user.bio,
+      profile_image: user.image,
+      interests,
+    };
+  }
 }

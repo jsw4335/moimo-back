@@ -12,7 +12,6 @@ import {
   UseInterceptors,
   UploadedFile,
   ConflictException,
-  UploadedFiles,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
@@ -20,10 +19,9 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
 import type { Response } from 'express';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';
 import { Cookies } from 'src/common/cookies.decorator';
-import { extname } from 'path';
 
 @Controller('users')
 export class UsersController {
@@ -129,18 +127,14 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Put('user-update')
-  @UseInterceptors(FilesInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { storage: multer.memoryStorage() }))
   async updateUser(
     @Req() req: Request & { user: JwtPayload },
-    @UploadedFiles() file?: Express.Multer.File[],
+    @Body() dto: UpdateExtraInfoDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    console.log('File:', file);
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-
     const userId = req.user.id;
-    // return this.usersService.updateUser(userId, dto, file);
-    return userId;
+    return this.usersService.updateUser(userId, dto, file);
   }
 
   @Post('check-nickname')

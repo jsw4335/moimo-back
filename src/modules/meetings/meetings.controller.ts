@@ -188,4 +188,24 @@ export class MeetingsController {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }
   }
+
+  @Delete(':meetingId')
+  @UseGuards(JwtAuthGuard)
+  async deleteMeeting(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      const userId = req.user.id;
+      await this.meetingsService.softDelete(meetingId, userId);
+
+      return res.status(HttpStatus.NO_CONTENT).send();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
 }

@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
@@ -10,7 +11,7 @@ import {
   MeetingPageOptionsDto,
   MeetingSort,
 } from './dto/meeting-page-options.dto';
-import { Prisma } from '@prisma/client';
+import { NotificationType, ParticipationStatus, Prisma } from '@prisma/client';
 import axios from 'axios';
 import { PageDto } from '../common/dto/page.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
@@ -268,6 +269,59 @@ export class MeetingsService {
     } catch {
       throw new InternalServerErrorException(
         '내 모임 목록을 가져오는 중 오류가 발생했습니다.',
+      );
+    }
+  }
+
+  async softDelete(meetingId: number, userId: number) {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: {
+        participations: {
+          where: {
+            status: ParticipationStatus.ACCEPTED,
+          },
+          select: { userId: true },
+        },
+      },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
+    }
+
+    if (meeting.hostId !== userId) {
+      throw new ForbiddenException('모임 주최자만 삭제할 수 있습니다.');
+    }
+
+    const now = new Date();
+    if (meeting.meetingDate < now) {
+      throw new BadRequestException('이미 종료된 모임은 삭제할 수 없습니다.');
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.meeting.update({
+          where: { id: meetingId },
+          data: { meetingDeleted: true },
+        });
+
+        const notifications = meeting.participations.map((p) => ({
+          receiverId: p.userId,
+          senderId: userId,
+          meetingId: meetingId,
+          type: NotificationType.MEETING_DELETED,
+        }));
+
+        if (notifications.length > 0) {
+          await tx.notification.createMany({
+            data: notifications,
+          });
+        }
+      });
+    } catch {
+      throw new InternalServerErrorException(
+        '모임 삭제 및 알림 처리 중 오류가 발생했습니다.',
       );
     }
   }

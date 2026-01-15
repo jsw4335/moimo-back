@@ -22,8 +22,6 @@ import { MeetingPageOptionsDto } from './dto/meeting-page-options.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { ParticipationUpdateItem } from './dto/update-participation.dto';
-import { PageDto } from '../common/dto/page.dto';
-import { MyMeetingDto } from './dto/meeting-item.dto';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -79,12 +77,11 @@ export class MeetingsController {
   ) {
     try {
       const userId = req.user.id;
-      const result: PageDto<MyMeetingDto> =
-        await this.meetingsService.getMyMeetings(
-          userId,
-          status,
-          pageOptionsDto,
-        );
+      const result = await this.meetingsService.getMyMeetings(
+        userId,
+        status,
+        pageOptionsDto,
+      );
 
       return res.status(HttpStatus.OK).json(result);
     } catch (error) {

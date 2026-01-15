@@ -15,7 +15,7 @@ import axios from 'axios';
 import { User } from '@prisma/client';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
 import 'dotenv/config';
-import type { JwtPayload } from 'src/auth/jwt-payload.interface';
+import type { JwtPayload } from '../../auth/jwt-payload.interface';
 import type { Bucket, File } from '@google-cloud/storage';
 import { MailsService } from '../mails/mails.service';
 import { UploadService } from '../upload/upload.service';

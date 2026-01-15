@@ -23,6 +23,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';
 import { Cookies } from 'src/common/cookies.decorator';
 import { extname } from 'path';
+
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -125,20 +126,9 @@ export class UsersController {
     };
   }
 
-   @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Put('user-update')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: multer.diskStorage({
-        destination: './uploads', // 저장 경로
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, uniqueSuffix + extname(file.originalname));
-        },
-      }),
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   async updateUser(
     @Req() req: Request & { user: JwtPayload },
     @Body() dto: UpdateExtraInfoDto,
@@ -150,7 +140,6 @@ export class UsersController {
     const userId = req.user.id;
     return this.usersService.updateUser(userId, dto, file);
   }
-
 
   @Post('check-nickname')
   async checkNickname(@Body('nickname') nickname: string) {

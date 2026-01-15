@@ -420,6 +420,7 @@ export class MeetingsService {
     return meetings.map((m) => ({
       id: m.id,
       title: m.title,
+      meetingImage: m.image,
       interestName: m.interest.name,
       currentParticipants: m.currentParticipants,
       maxParticipants: m.maxParticipants,

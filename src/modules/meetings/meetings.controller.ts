@@ -67,6 +67,31 @@ export class MeetingsController {
     }
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMyMeetings(
+    @Query('status') status: string = 'all',
+    @Query() pageOptionsDto: MeetingPageOptionsDto,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      const userId = req.user.id;
+      const result = await this.meetingsService.getMyMeetings(
+        userId,
+        status,
+        pageOptionsDto,
+      );
+
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).send();
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
   @Get(':id')
   async findOne(
     @Param('id', ParseIntPipe) id: number,

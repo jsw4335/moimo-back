@@ -14,7 +14,7 @@ import { Prisma } from '@prisma/client';
 import axios from 'axios';
 import { PageDto } from '../common/dto/page.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
-import { MeetingItemDto } from './dto/meeting-item.dto';
+import { MeetingItemDto, MyMeetingDto } from './dto/meeting-item.dto';
 
 interface KakaoAddressDocument {
   x: string;
@@ -181,5 +181,94 @@ export class MeetingsService {
         bio: meeting.host.bio || '',
       },
     };
+  }
+
+  async getMyMeetings(
+    userId: number,
+    statusQuery: string = 'all',
+    dto: MeetingPageOptionsDto,
+  ): Promise<PageDto<MyMeetingDto>> {
+    const { page = 1, limit = 10 } = dto;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    let where: Prisma.MeetingWhereInput = {
+      OR: [
+        { hostId: userId },
+        { participations: { some: { userId: userId } } },
+      ],
+    };
+
+    if (statusQuery === 'pending') {
+      where = {
+        participations: {
+          some: { userId: userId, status: 'PENDING' },
+        },
+      };
+    } else if (statusQuery === 'accepted') {
+      where = {
+        meetingDate: { gte: now },
+        OR: [
+          { hostId: userId },
+          { participations: { some: { userId: userId, status: 'ACCEPTED' } } },
+        ],
+      };
+    } else if (statusQuery === 'completed') {
+      where = {
+        meetingDate: { lt: now },
+        OR: [
+          { hostId: userId },
+          { participations: { some: { userId: userId, status: 'ACCEPTED' } } },
+        ],
+      };
+    }
+    try {
+      const [totalCount, meetings] = await Promise.all([
+        this.prisma.meeting.count({ where }),
+        this.prisma.meeting.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            _count: {
+              select: { participations: { where: { status: 'ACCEPTED' } } },
+            },
+            interest: { select: { name: true } },
+            participations: {
+              where: { userId: userId },
+              select: { status: true },
+            },
+          },
+          orderBy: { meetingDate: 'desc' },
+        }),
+      ]);
+
+      const mappedData: MyMeetingDto[] = meetings.map((m) => {
+        const isHost = m.hostId === userId;
+        const isCompleted = m.meetingDate < now;
+        const myStatus = isHost
+          ? 'ACCEPTED'
+          : m.participations[0]?.status || 'PENDING';
+
+        return {
+          meetingId: m.id,
+          title: m.title,
+          interestName: m.interest.name,
+          maxParticipants: m.maxParticipants,
+          currentParticipants: m._count.participations,
+          address: m.address,
+          meetingDate: m.meetingDate,
+          status: myStatus,
+          isHost: isHost,
+          isCompleted: isCompleted,
+        };
+      });
+
+      return new PageDto(mappedData, new PageMetaDto(totalCount, page, limit));
+    } catch {
+      throw new InternalServerErrorException(
+        '내 모임 목록을 가져오는 중 오류가 발생했습니다.',
+      );
+    }
   }
 }

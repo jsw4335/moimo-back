@@ -11,7 +11,7 @@ import {
   MeetingPageOptionsDto,
   MeetingSort,
 } from './dto/meeting-page-options.dto';
-import { Prisma } from '@prisma/client';
+import { NotificationType, ParticipationStatus, Prisma } from '@prisma/client';
 import axios from 'axios';
 import { PageDto } from '../common/dto/page.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
@@ -279,7 +279,7 @@ export class MeetingsService {
       include: {
         participations: {
           where: {
-            status: 'ACCEPTED',
+            status: ParticipationStatus.ACCEPTED,
           },
           select: { userId: true },
         },
@@ -303,14 +303,14 @@ export class MeetingsService {
       await this.prisma.$transaction(async (tx) => {
         await tx.meeting.update({
           where: { id: meetingId },
-          data: { meetingStatus: true },
+          data: { meetingDeleted: true },
         });
 
         const notifications = meeting.participations.map((p) => ({
           receiverId: p.userId,
           senderId: userId,
           meetingId: meetingId,
-          type: 'MEETING_DELETED' as const,
+          type: NotificationType.MEETING_DELETED,
         }));
 
         if (notifications.length > 0) {

@@ -188,6 +188,7 @@ export class MeetingsService {
           select: {
             nickname: true,
             bio: true,
+            image: true,
           },
         },
         interest: true,
@@ -205,6 +206,7 @@ export class MeetingsService {
     return {
       id: meeting.id,
       title: meeting.title,
+      meetingImage: meeting.image,
       description: meeting.description,
       interestName: meeting.interest.name,
       maxParticipants: meeting.maxParticipants,
@@ -218,6 +220,7 @@ export class MeetingsService {
       host: {
         nickname: meeting.host.nickname,
         bio: meeting.host.bio || '',
+        hostImage: meeting.host.image,
       },
     };
   }

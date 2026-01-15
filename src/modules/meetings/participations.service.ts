@@ -103,16 +103,24 @@ export class ParticipationsService {
     userId: number,
     updates: ParticipationUpdateItem[],
   ) {
-    const meeting = await this.prisma.meeting.findUnique({
-      where: { id: meetingId },
-      select: { hostId: true },
-    });
-
-    if (!meeting) throw new NotFoundException('모임을 찾을 수 없습니다.');
-    if (meeting.hostId !== userId) {
-      throw new ForbiddenException('호스트만 신청 상태를 변경할 수 있습니다.');
-    }
     return await this.prisma.$transaction(async (tx) => {
+      const meeting = await tx.meeting.findUnique({
+        where: { id: meetingId },
+        select: {
+          hostId: true,
+          maxParticipants: true,
+          currentParticipants: true,
+        },
+      });
+
+      if (!meeting) throw new NotFoundException('모임을 찾을 수 없습니다.');
+      if (meeting.hostId !== userId) {
+        throw new ForbiddenException(
+          '호스트만 신청 상태를 변경할 수 있습니다.',
+        );
+      }
+
+      let tempAcceptedCount = meeting.currentParticipants;
       const results: Participation[] = [];
 
       for (const update of updates) {
@@ -120,11 +128,32 @@ export class ParticipationsService {
           where: { id: update.participationId },
         });
 
-        if (!currentParticipation) continue;
-
-        if (currentParticipation.status === update.status) {
-          results.push(currentParticipation);
+        if (
+          !currentParticipation ||
+          currentParticipation.status === update.status
+        )
           continue;
+
+        if (update.status === ParticipationStatus.ACCEPTED) {
+          if (tempAcceptedCount >= meeting.maxParticipants) {
+            throw new BadRequestException(
+              `정원이 초과되었습니다. (최대 ${meeting.maxParticipants}명)`,
+            );
+          }
+
+          tempAcceptedCount++;
+          await tx.meeting.update({
+            where: { id: meetingId },
+            data: { currentParticipants: { increment: 1 } },
+          });
+        } else if (
+          currentParticipation.status === ParticipationStatus.ACCEPTED
+        ) {
+          tempAcceptedCount--;
+          await tx.meeting.update({
+            where: { id: meetingId },
+            data: { currentParticipants: { decrement: 1 } },
+          });
         }
 
         const updatedParticipation = await tx.participation.update({

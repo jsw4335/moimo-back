@@ -86,6 +86,7 @@ model Meeting {
   id              Int      @id @default(autoincrement())
   title           String   @db.VarChar(100)
   description     String   @db.VarChar(4000)
+  currentParticipants Int @default(1) @map("current_participants")
   maxParticipants Int      @map("max_participants")
   meetingDate     DateTime @map("meeting_date")
   image           String?
@@ -93,7 +94,7 @@ model Meeting {
   address         String   @db.Text
   latitude        Float
   longitude       Float
-  meetingStatus   Boolean  @default(false) @map("meeting_status")
+  meetingDeleted      Boolean  @default(false) @map("meeting_deleted")
 
   hostId    Int      @map("host_id")
   createdAt DateTime @default(now()) @map("created_at")

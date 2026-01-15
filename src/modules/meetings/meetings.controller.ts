@@ -70,7 +70,6 @@ export class MeetingsController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMyMeetings(
-    @Query('status') status: string = 'all',
     @Query() pageOptionsDto: MeetingPageOptionsDto,
     @Req() req: express.Request & { user: JwtPayload },
     @Res() res: express.Response,
@@ -79,7 +78,7 @@ export class MeetingsController {
       const userId = req.user.id;
       const result = await this.meetingsService.getMyMeetings(
         userId,
-        status,
+        pageOptionsDto.status,
         pageOptionsDto,
       );
 

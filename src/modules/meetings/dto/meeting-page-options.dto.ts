@@ -21,4 +21,8 @@ export class MeetingPageOptionsDto extends PageOptionsDto {
   @Transform(({ value }) => value === 'true')
   @IsBoolean()
   finishedFilter?: boolean = false;
+
+  @IsOptional()
+  @IsString()
+  status?: string = 'all';
 }

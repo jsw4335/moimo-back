@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  GoneException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
@@ -89,6 +90,8 @@ export class MeetingsService {
     const skip = (page - 1) * limit;
     const where: Prisma.MeetingWhereInput = {};
 
+    where.meetingDeleted = false;
+
     if (!finishedFilter) {
       where.meetingDate = { gte: new Date() };
     }
@@ -120,9 +123,6 @@ export class MeetingsService {
           take: limit,
           orderBy: orderBy,
           include: {
-            _count: {
-              select: { participations: { where: { status: 'ACCEPTED' } } },
-            },
             interest: { select: { name: true } },
           },
         }),
@@ -133,7 +133,7 @@ export class MeetingsService {
         title: meeting.title,
         interestName: meeting.interest.name,
         maxParticipants: meeting.maxParticipants,
-        currentParticipants: meeting._count.participations,
+        currentParticipants: meeting.currentParticipants,
         address: meeting.address,
         meetingDate: meeting.meetingDate,
       }));
@@ -164,13 +164,17 @@ export class MeetingsService {
       throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
     }
 
+    if (meeting.meetingDeleted) {
+      throw new GoneException('삭제된 모임입니다.');
+    }
+
     return {
       id: meeting.id,
       title: meeting.title,
       description: meeting.description,
       interestName: meeting.interest.name,
       maxParticipants: meeting.maxParticipants,
-
+      currentParticipants: meeting.currentParticipants,
       meetingDate: meeting.meetingDate,
       location: {
         address: meeting.address,
@@ -194,10 +198,7 @@ export class MeetingsService {
     const now = new Date();
 
     let where: Prisma.MeetingWhereInput = {
-      OR: [
-        { hostId: userId },
-        { participations: { some: { userId: userId } } },
-      ],
+      meetingDeleted: false,
     };
 
     if (statusQuery === 'pending') {
@@ -222,6 +223,11 @@ export class MeetingsService {
           { participations: { some: { userId: userId, status: 'ACCEPTED' } } },
         ],
       };
+    } else {
+      where.OR = [
+        { hostId: userId },
+        { participations: { some: { userId: userId } } },
+      ];
     }
     try {
       const [totalCount, meetings] = await Promise.all([
@@ -231,9 +237,6 @@ export class MeetingsService {
           skip,
           take: limit,
           include: {
-            _count: {
-              select: { participations: { where: { status: 'ACCEPTED' } } },
-            },
             interest: { select: { name: true } },
             participations: {
               where: { userId: userId },
@@ -256,7 +259,7 @@ export class MeetingsService {
           title: m.title,
           interestName: m.interest.name,
           maxParticipants: m.maxParticipants,
-          currentParticipants: m._count.participations,
+          currentParticipants: m.currentParticipants,
           address: m.address,
           meetingDate: m.meetingDate,
           status: myStatus,

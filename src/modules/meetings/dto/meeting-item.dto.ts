@@ -7,3 +7,9 @@ export class MeetingItemDto {
   address: string;
   meetingDate: Date;
 }
+
+export class MyMeetingDto extends MeetingItemDto {
+  status: string;
+  isHost: boolean;
+  isCompleted: boolean;
+}

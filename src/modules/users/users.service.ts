@@ -143,6 +143,13 @@ export class UsersService {
             nickname: name,
           },
         });
+
+        await this.prisma.socialAccount.create({
+          data: {
+            googleSubId: userInfoRes.data.id, // Google에서 받은 sub 값
+            userId: user.id,
+          },
+        });
       }
 
       let refreshToken = user.refreshToken;

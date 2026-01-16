@@ -50,7 +50,7 @@ export class MeetingsController {
     } catch (error) {
       if (error instanceof HttpException) {
         const status = error.getStatus();
-        return res.status(status).send();
+        return res.status(status).send(error.message);
       }
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }

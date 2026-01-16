@@ -102,12 +102,21 @@ export class ParticipationsService {
     }
 
     const participations = await this.prisma.participation.findMany({
-      where: { meetingId },
+      where: { meetingId, userId: { not: meeting.hostId } },
       include: {
         user: {
           select: {
+            id: true,
             nickname: true,
             bio: true,
+            image: true,
+            interests: {
+              select: {
+                interest: {
+                  select: { id: true, name: true },
+                },
+              },
+            },
           },
         },
       },
@@ -116,9 +125,15 @@ export class ParticipationsService {
 
     return participations.map((p) => ({
       participationId: p.id,
+      userId: p.user.id,
       nickname: p.user.nickname,
       bio: p.user.bio,
+      profileImage: p.user.image,
       status: p.status,
+      interests: p.user.interests.map((ui) => ({
+        id: ui.interest.id,
+        name: ui.interest.name,
+      })),
     }));
   }
 

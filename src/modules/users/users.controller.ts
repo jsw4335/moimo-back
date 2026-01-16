@@ -12,6 +12,7 @@ import {
   UseInterceptors,
   UploadedFile,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
@@ -34,12 +35,16 @@ export class UsersController {
     @Body('email') email: string,
     @Body('password') password: string,
   ) {
+    if (!nickname || !email || !password) {
+      throw new BadRequestException();
+    }
+
     const user = await this.usersService.registerUser(
       nickname,
       email,
       password,
     );
-    return { message: '회원가입 성공', user };
+    return { success: true, message: '회원가입 성공', user };
   }
 
   @Get()

@@ -22,6 +22,8 @@ import { MeetingPageOptionsDto } from './dto/meeting-page-options.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { ParticipationUpdateItem } from './dto/update-participation.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadedFile, UseInterceptors } from '@nestjs/common';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -32,14 +34,17 @@ export class MeetingsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('meetingImage'))
   async create(
     @Body() dto: CreateMeetingDto,
+    @UploadedFile() file: Express.Multer.File,
     @Res() res: express.Response,
     @Req() req: express.Request & { user: JwtPayload },
   ) {
     try {
       const hostId = req.user.id;
-      await this.meetingsService.create(dto, hostId);
+
+      await this.meetingsService.create(dto, hostId, file);
 
       return res.status(HttpStatus.CREATED).send();
     } catch (error) {
@@ -70,7 +75,6 @@ export class MeetingsController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMyMeetings(
-    @Query('status') status: string = 'all',
     @Query() pageOptionsDto: MeetingPageOptionsDto,
     @Req() req: express.Request & { user: JwtPayload },
     @Res() res: express.Response,
@@ -79,7 +83,7 @@ export class MeetingsController {
       const userId = req.user.id;
       const result = await this.meetingsService.getMyMeetings(
         userId,
-        status,
+        pageOptionsDto.status,
         pageOptionsDto,
       );
 
@@ -87,6 +91,23 @@ export class MeetingsController {
     } catch (error) {
       if (error instanceof HttpException) {
         return res.status(error.getStatus()).send();
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
+  @Get('search')
+  async search(
+    @Query('keyword') keyword: string,
+    @Res() res: express.Response,
+  ) {
+    try {
+      const result = await this.meetingsService.searchMeetings(keyword);
+
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
       }
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }

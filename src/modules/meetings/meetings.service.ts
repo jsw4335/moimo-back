@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  GoneException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
@@ -16,6 +17,7 @@ import axios from 'axios';
 import { PageDto } from '../common/dto/page.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { MeetingItemDto, MyMeetingDto } from './dto/meeting-item.dto';
+import { UploadService } from '../upload/upload.service';
 
 interface KakaoAddressDocument {
   x: string;
@@ -29,11 +31,29 @@ interface KakaoAddressResponse {
 
 @Injectable()
 export class MeetingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly uploadService: UploadService,
+  ) {}
 
-  async create(dto: CreateMeetingDto, hostId: number) {
+  async create(
+    dto: CreateMeetingDto,
+    hostId: number,
+    file?: Express.Multer.File,
+  ) {
     let latitude: number;
     let longitude: number;
+    let imageUrl: string | null = null;
+
+    if (file) {
+      try {
+        imageUrl = await this.uploadService.uploadFile('meeting', file);
+      } catch {
+        throw new InternalServerErrorException(
+          '이미지 업로드 중 오류가 발생했습니다.',
+        );
+      }
+    }
 
     try {
       const kakaoResponse = await axios.get<KakaoAddressResponse>(
@@ -62,18 +82,32 @@ export class MeetingsService {
       );
     }
 
-    await this.prisma.meeting.create({
-      data: {
-        title: dto.title,
-        description: dto.description,
-        maxParticipants: dto.maxParticipants,
-        meetingDate: new Date(dto.meetingDate),
-        interestId: dto.interestId,
-        address: dto.address,
-        latitude: latitude,
-        longitude: longitude,
-        hostId: hostId,
-      },
+    return await this.prisma.$transaction(async (tx) => {
+      const meeting = await tx.meeting.create({
+        data: {
+          title: dto.title,
+          description: dto.description,
+          maxParticipants: Number(dto.maxParticipants),
+          meetingDate: new Date(dto.meetingDate),
+          interestId: Number(dto.interestId),
+          address: dto.address,
+          latitude: latitude,
+          longitude: longitude,
+          image: imageUrl,
+          hostId: hostId,
+          currentParticipants: 1,
+        },
+      });
+
+      await tx.participation.create({
+        data: {
+          meetingId: meeting.id,
+          userId: hostId,
+          status: 'ACCEPTED',
+        },
+      });
+
+      return meeting;
     });
   }
 
@@ -88,6 +122,8 @@ export class MeetingsService {
 
     const skip = (page - 1) * limit;
     const where: Prisma.MeetingWhereInput = {};
+
+    where.meetingDeleted = false;
 
     if (!finishedFilter) {
       where.meetingDate = { gte: new Date() };
@@ -120,9 +156,6 @@ export class MeetingsService {
           take: limit,
           orderBy: orderBy,
           include: {
-            _count: {
-              select: { participations: { where: { status: 'ACCEPTED' } } },
-            },
             interest: { select: { name: true } },
           },
         }),
@@ -131,9 +164,10 @@ export class MeetingsService {
       const mappedData: MeetingItemDto[] = meetings.map((meeting) => ({
         meetingId: meeting.id,
         title: meeting.title,
+        meetingImage: meeting.image,
         interestName: meeting.interest.name,
         maxParticipants: meeting.maxParticipants,
-        currentParticipants: meeting._count.participations,
+        currentParticipants: meeting.currentParticipants,
         address: meeting.address,
         meetingDate: meeting.meetingDate,
       }));
@@ -154,6 +188,7 @@ export class MeetingsService {
           select: {
             nickname: true,
             bio: true,
+            image: true,
           },
         },
         interest: true,
@@ -164,13 +199,18 @@ export class MeetingsService {
       throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
     }
 
+    if (meeting.meetingDeleted) {
+      throw new GoneException('삭제된 모임입니다.');
+    }
+
     return {
       id: meeting.id,
       title: meeting.title,
+      meetingImage: meeting.image,
       description: meeting.description,
       interestName: meeting.interest.name,
       maxParticipants: meeting.maxParticipants,
-
+      currentParticipants: meeting.currentParticipants,
       meetingDate: meeting.meetingDate,
       location: {
         address: meeting.address,
@@ -180,6 +220,7 @@ export class MeetingsService {
       host: {
         nickname: meeting.host.nickname,
         bio: meeting.host.bio || '',
+        hostImage: meeting.host.image,
       },
     };
   }
@@ -194,10 +235,7 @@ export class MeetingsService {
     const now = new Date();
 
     let where: Prisma.MeetingWhereInput = {
-      OR: [
-        { hostId: userId },
-        { participations: { some: { userId: userId } } },
-      ],
+      meetingDeleted: false,
     };
 
     if (statusQuery === 'pending') {
@@ -222,6 +260,11 @@ export class MeetingsService {
           { participations: { some: { userId: userId, status: 'ACCEPTED' } } },
         ],
       };
+    } else {
+      where.OR = [
+        { hostId: userId },
+        { participations: { some: { userId: userId } } },
+      ];
     }
     try {
       const [totalCount, meetings] = await Promise.all([
@@ -231,9 +274,6 @@ export class MeetingsService {
           skip,
           take: limit,
           include: {
-            _count: {
-              select: { participations: { where: { status: 'ACCEPTED' } } },
-            },
             interest: { select: { name: true } },
             participations: {
               where: { userId: userId },
@@ -256,7 +296,7 @@ export class MeetingsService {
           title: m.title,
           interestName: m.interest.name,
           maxParticipants: m.maxParticipants,
-          currentParticipants: m._count.participations,
+          currentParticipants: m.currentParticipants,
           address: m.address,
           meetingDate: m.meetingDate,
           status: myStatus,
@@ -324,5 +364,69 @@ export class MeetingsService {
         '모임 삭제 및 알림 처리 중 오류가 발생했습니다.',
       );
     }
+  }
+
+  async searchMeetings(keyword: string) {
+    if (!keyword || keyword.trim() === '') {
+      throw new BadRequestException('검색어를 입력해주세요.');
+    }
+
+    const now = new Date();
+
+    const meetings = await this.prisma.meeting.findMany({
+      where: {
+        meetingDeleted: false,
+        meetingDate: {
+          gte: now,
+        },
+        OR: [
+          {
+            title: {
+              contains: keyword,
+              mode: 'insensitive',
+            },
+          },
+          {
+            interest: {
+              name: {
+                contains: keyword,
+                mode: 'insensitive',
+              },
+            },
+          },
+          {
+            host: {
+              nickname: {
+                contains: keyword,
+                mode: 'insensitive',
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        interest: true,
+        host: {
+          select: {
+            nickname: true,
+          },
+        },
+      },
+      orderBy: {
+        meetingDate: 'asc',
+      },
+    });
+
+    return meetings.map((m) => ({
+      id: m.id,
+      title: m.title,
+      meetingImage: m.image,
+      interestName: m.interest.name,
+      currentParticipants: m.currentParticipants,
+      maxParticipants: m.maxParticipants,
+      meetingDate: m.meetingDate,
+      address: m.address,
+      hostNickname: m.host.nickname,
+    }));
   }
 }

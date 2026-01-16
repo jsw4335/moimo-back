@@ -1,4 +1,4 @@
-export class MeetingItemDto {
+export class BaseMeetingDto {
   meetingId: number;
   title: string;
   interestName: string;
@@ -8,7 +8,11 @@ export class MeetingItemDto {
   meetingDate: Date;
 }
 
-export class MyMeetingDto extends MeetingItemDto {
+export class MeetingItemDto extends BaseMeetingDto {
+  meetingImage: string | null;
+}
+
+export class MyMeetingDto extends BaseMeetingDto {
   status: string;
   isHost: boolean;
   isCompleted: boolean;

@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsString, IsNotEmpty, IsNumber, IsDateString } from 'class-validator';
 
 export class CreateMeetingDto {
@@ -9,10 +10,11 @@ export class CreateMeetingDto {
   @IsNotEmpty()
   description: string;
 
-  @IsNumber()
+  @Type(() => Number)
   @IsNotEmpty()
   interestId: number;
 
+  @Type(() => Number)
   @IsNumber()
   @IsNotEmpty()
   maxParticipants: number;

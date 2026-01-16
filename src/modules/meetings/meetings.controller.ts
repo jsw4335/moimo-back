@@ -139,14 +139,11 @@ export class MeetingsController {
   ) {
     try {
       const userId = req.user.id;
-      const result = await this.participationsService.createParticipation(
-        meetingId,
-        userId,
-      );
-      return res.status(HttpStatus.CREATED).json(result);
+      await this.participationsService.createParticipation(meetingId, userId);
+      return res.status(HttpStatus.CREATED).send();
     } catch (error) {
       if (error instanceof HttpException)
-        return res.status(error.getStatus()).send();
+        return res.status(error.getStatus()).send(error.message);
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }
   }

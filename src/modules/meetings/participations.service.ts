@@ -78,7 +78,7 @@ export class ParticipationsService {
       }),
     ]);
 
-    return { status: ParticipationStatus.PENDING };
+    return;
   }
 
   async findApplicants(meetingId: number, userId: number) {

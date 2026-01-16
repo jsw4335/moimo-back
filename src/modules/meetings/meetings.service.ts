@@ -45,10 +45,22 @@ export class MeetingsService {
     let longitude: number;
     let imageUrl: string | null = null;
 
+    //지울예정입니다 콘솔로그
+    console.log('1. 요청 도달 - DTO:', dto);
+    console.log(
+      '2. 파일 상태:',
+      file ? `파일 있음(${file.size} bytes)` : '파일 없음',
+    );
+
     if (file) {
       try {
+        //지울예정입니다 콘솔로그
+        console.log('3. 업로드 시작');
         imageUrl = await this.uploadService.uploadFile('meeting', file);
-      } catch {
+        //지울예정입니다 콘솔로그
+        console.log('4. 업로드 완료:', imageUrl);
+      } catch (e) {
+        console.error('업로드 에러 상세:', e);
         throw new InternalServerErrorException(
           '이미지 업로드 중 오류가 발생했습니다.',
         );

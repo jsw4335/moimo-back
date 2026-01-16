@@ -11,6 +11,7 @@ export class CreateMeetingDto {
   description: string;
 
   @Type(() => Number)
+  @IsNumber()
   @IsNotEmpty()
   interestId: number;
 

@@ -208,7 +208,7 @@ export class MeetingsService {
       title: meeting.title,
       meetingImage: meeting.image,
       description: meeting.description,
-      interestName: meeting.interest.name,
+      interestId: meeting.interestId,
       maxParticipants: meeting.maxParticipants,
       currentParticipants: meeting.currentParticipants,
       meetingDate: meeting.meetingDate,
@@ -218,6 +218,7 @@ export class MeetingsService {
         lng: meeting.longitude,
       },
       host: {
+        hostId: meeting.hostId,
         nickname: meeting.host.nickname,
         bio: meeting.host.bio || '',
         hostImage: meeting.host.image,

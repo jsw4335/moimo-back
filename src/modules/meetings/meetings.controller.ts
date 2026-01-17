@@ -193,52 +193,6 @@ export class MeetingsController {
     }
   }
 
-  // @Put(':meetingId/participations')
-  // @UseGuards(JwtAuthGuard)
-  // async updateParticipationStatuses(
-  //   @Param('meetingId', ParseIntPipe) meetingId: number,
-  //   @Body() updates: ParticipationUpdateItem[],
-  //   @Req() req: express.Request & { user: JwtPayload },
-  //   @Res() res: express.Response,
-  // ) {
-  //   try {
-  //     await this.participationsService.updateStatuses(
-  //       meetingId,
-  //       req.user.id,
-  //       updates,
-  //     );
-  //     return res.status(HttpStatus.NO_CONTENT).send();
-  //   } catch (error) {
-  //     if (error instanceof HttpException) {
-  //       return res.status(error.getStatus()).json({ message: error.message });
-  //     }
-  //     return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
-  //   }
-  // }
-
-  // @Delete(':meetingId/participations/:participationId')
-  // @UseGuards(JwtAuthGuard)
-  // async deleteParticipation(
-  //   @Param('meetingId', ParseIntPipe) meetingId: number,
-  //   @Param('participationId', ParseIntPipe) participationId: number,
-  //   @Req() req: express.Request & { user: JwtPayload },
-  //   @Res() res: express.Response,
-  // ) {
-  //   try {
-  //     const userId = req.user.id;
-  //     await this.participationsService.deleteParticipation(
-  //       meetingId,
-  //       participationId,
-  //       userId,
-  //     );
-  //     return res.status(HttpStatus.NO_CONTENT).send();
-  //   } catch (error) {
-  //     if (error instanceof HttpException)
-  //       return res.status(error.getStatus()).send();
-  //     return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
-  //   }
-  // }
-
   @Delete(':meetingId')
   @UseGuards(JwtAuthGuard)
   async deleteMeeting(
@@ -275,6 +229,30 @@ export class MeetingsController {
       );
       return res.status(HttpStatus.NO_CONTENT).send();
     } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
+  @Put(':meetingId/participations/:participationId/reject')
+  @UseGuards(JwtAuthGuard)
+  async rejectOne(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Param('participationId', ParseIntPipe) participationId: number,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      await this.participationsService.rejectOne(
+        meetingId,
+        req.user.id,
+        participationId,
+      );
+
+      return res.status(HttpStatus.NO_CONTENT).send();
+    } catch (error: unknown) {
       if (error instanceof HttpException) {
         return res.status(error.getStatus()).json({ message: error.message });
       }

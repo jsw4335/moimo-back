@@ -217,7 +217,7 @@ export class MeetingsService {
     const formattedDate = kstMeetingDate.toISOString().split('.')[0];
 
     return {
-      id: meeting.id,
+      meetingId: meeting.id,
       title: meeting.title,
       meetingImage: meeting.image,
       description: meeting.description,

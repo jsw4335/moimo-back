@@ -287,9 +287,8 @@ export class MeetingsService {
           skip,
           take: limit,
           include: {
-            interest: { select: { name: true } },
             participations: {
-              where: { userId: userId },
+              where: { userId },
               select: { status: true },
             },
           },
@@ -313,14 +312,13 @@ export class MeetingsService {
         return {
           meetingId: m.id,
           title: m.title,
-          interestName: m.interest.name,
           maxParticipants: m.maxParticipants,
           currentParticipants: m.currentParticipants,
           address: m.address,
           meetingDate: formattedDate,
           status: myStatus,
-          isHost: isHost,
-          isCompleted: isCompleted,
+          isHost,
+          isCompleted,
         };
       });
 

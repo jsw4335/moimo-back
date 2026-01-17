@@ -254,4 +254,72 @@ export class ParticipationsService {
       return;
     });
   }
+
+  async approveAll(meetingId: number, hostId: number): Promise<void> {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const meeting = await tx.meeting.findUnique({
+        where: { id: meetingId },
+      });
+
+      if (!meeting) throw new NotFoundException('모임을 찾을 수 없습니다.');
+      if (meeting.hostId !== hostId) {
+        throw new ForbiddenException('호스트 권한이 없습니다.');
+      }
+
+      const pendings = await tx.participation.findMany({
+        where: {
+          meetingId,
+          status: ParticipationStatus.PENDING,
+        },
+      });
+
+      if (pendings.length === 0) return;
+
+      const remainingSlots =
+        meeting.maxParticipants - meeting.currentParticipants;
+
+      if (pendings.length > remainingSlots) {
+        throw new BadRequestException(
+          `남은 자리가 부족하여 모두 승인할 수 없습니다. (남은 자리: ${remainingSlots}명 / 대기 인원: ${pendings.length}명)`,
+        );
+      }
+
+      await tx.participation.updateMany({
+        where: {
+          id: { in: pendings.map((p) => p.id) },
+        },
+        data: { status: ParticipationStatus.ACCEPTED },
+      });
+
+      await tx.meeting.update({
+        where: { id: meetingId },
+        data: {
+          currentParticipants: { increment: pendings.length },
+        },
+      });
+
+      for (const p of pendings) {
+        await tx.notification.updateMany({
+          where: {
+            meetingId,
+            receiverId: hostId,
+            senderId: p.userId,
+            type: NotificationType.PARTICIPATION_REQUEST,
+            isRead: false,
+          },
+          data: { isRead: true },
+        });
+
+        await tx.notification.create({
+          data: {
+            meetingId,
+            receiverId: p.userId,
+            senderId: hostId,
+            type: NotificationType.PARTICIPATION_ACCEPTED,
+            isRead: false,
+          },
+        });
+      }
+    });
+  }
 }

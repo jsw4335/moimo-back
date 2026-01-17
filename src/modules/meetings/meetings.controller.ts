@@ -213,6 +213,25 @@ export class MeetingsController {
     }
   }
 
+  @Put(':meetingId/participations/approve-all')
+  @UseGuards(JwtAuthGuard)
+  async approveAll(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      await this.participationsService.approveAll(meetingId, req.user.id);
+
+      return res.status(HttpStatus.NO_CONTENT).send();
+    } catch (error: unknown) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
   @Put(':meetingId/participations/:participationId/approve')
   @UseGuards(JwtAuthGuard)
   async approveOne(

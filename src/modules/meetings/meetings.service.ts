@@ -165,6 +165,7 @@ export class MeetingsService {
         const kstMeetingDate = new Date(
           meeting.meetingDate.getTime() + 9 * 60 * 60 * 1000,
         );
+        const formattedDate = kstMeetingDate.toISOString().split('.')[0];
 
         return {
           meetingId: meeting.id,
@@ -174,7 +175,7 @@ export class MeetingsService {
           maxParticipants: meeting.maxParticipants,
           currentParticipants: meeting.currentParticipants,
           address: meeting.address,
-          meetingDate: kstMeetingDate,
+          meetingDate: formattedDate,
         };
       });
 
@@ -213,6 +214,8 @@ export class MeetingsService {
       meeting.meetingDate.getTime() + 9 * 60 * 60 * 1000,
     );
 
+    const formattedDate = kstMeetingDate.toISOString().split('.')[0];
+
     return {
       id: meeting.id,
       title: meeting.title,
@@ -221,7 +224,7 @@ export class MeetingsService {
       interestId: meeting.interestId,
       maxParticipants: meeting.maxParticipants,
       currentParticipants: meeting.currentParticipants,
-      meetingDate: kstMeetingDate,
+      meetingDate: formattedDate,
       location: {
         address: meeting.address,
         lat: meeting.latitude,
@@ -305,6 +308,8 @@ export class MeetingsService {
           m.meetingDate.getTime() + 9 * 60 * 60 * 1000,
         );
 
+        const formattedDate = kstMeetingDate.toISOString().split('.')[0];
+
         return {
           meetingId: m.id,
           title: m.title,
@@ -312,7 +317,7 @@ export class MeetingsService {
           maxParticipants: m.maxParticipants,
           currentParticipants: m.currentParticipants,
           address: m.address,
-          meetingDate: kstMeetingDate,
+          meetingDate: formattedDate,
           status: myStatus,
           isHost: isHost,
           isCompleted: isCompleted,

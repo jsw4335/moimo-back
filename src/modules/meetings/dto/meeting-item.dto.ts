@@ -5,7 +5,7 @@ export class BaseMeetingDto {
   maxParticipants: number;
   currentParticipants: number;
   address: string;
-  meetingDate: Date;
+  meetingDate: string;
 }
 
 export class MeetingItemDto extends BaseMeetingDto {

@@ -583,7 +583,7 @@ export class UsersService {
       email: user.email,
       nickname: user.nickname,
       bio: user.bio,
-      profile_image: user.image,
+      profileImage: user.image,
       interests,
     };
   }

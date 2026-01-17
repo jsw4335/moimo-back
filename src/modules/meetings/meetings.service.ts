@@ -228,6 +228,7 @@ export class MeetingsService {
   async getMyMeetings(
     userId: number,
     statusQuery: string = 'all',
+    viewQuery: string = 'all',
     dto: MeetingPageOptionsDto,
   ): Promise<PageDto<MyMeetingDto>> {
     const { page = 1, limit = 10 } = dto;
@@ -237,6 +238,18 @@ export class MeetingsService {
     let where: Prisma.MeetingWhereInput = {
       meetingDeleted: false,
     };
+
+    if (viewQuery === 'hosted') {
+      where.hostId = userId;
+    } else if (viewQuery === 'joined') {
+      where.hostId = { not: userId };
+      where.participations = { some: { userId: userId } };
+    } else {
+      where.OR = [
+        { hostId: userId },
+        { participations: { some: { userId: userId } } },
+      ];
+    }
 
     if (statusQuery === 'pending') {
       where = {

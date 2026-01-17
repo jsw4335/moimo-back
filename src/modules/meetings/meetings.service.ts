@@ -433,6 +433,10 @@ export class MeetingsService {
       throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
     }
 
+    if (meeting.meetingDeleted) {
+      throw new GoneException('이미 삭제된 모임입니다.');
+    }
+
     if (meeting.hostId !== userId) {
       throw new ForbiddenException('모임 주최자만 삭제할 수 있습니다.');
     }
@@ -449,12 +453,14 @@ export class MeetingsService {
           data: { meetingDeleted: true },
         });
 
-        const notifications = meeting.participations.map((p) => ({
-          receiverId: p.userId,
-          senderId: userId,
-          meetingId: meetingId,
-          type: NotificationType.MEETING_DELETED,
-        }));
+        const notifications = meeting.participations
+          .filter((p) => p.userId !== userId)
+          .map((p) => ({
+            receiverId: p.userId,
+            senderId: userId,
+            meetingId: meetingId,
+            type: NotificationType.MEETING_DELETED,
+          }));
 
         if (notifications.length > 0) {
           await tx.notification.createMany({

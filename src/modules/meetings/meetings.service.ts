@@ -208,7 +208,7 @@ export class MeetingsService {
       title: meeting.title,
       meetingImage: meeting.image,
       description: meeting.description,
-      interestName: meeting.interest.name,
+      interestId: meeting.interestId,
       maxParticipants: meeting.maxParticipants,
       currentParticipants: meeting.currentParticipants,
       meetingDate: meeting.meetingDate,
@@ -218,6 +218,7 @@ export class MeetingsService {
         lng: meeting.longitude,
       },
       host: {
+        hostId: meeting.hostId,
         nickname: meeting.host.nickname,
         bio: meeting.host.bio || '',
         hostImage: meeting.host.image,
@@ -228,44 +229,43 @@ export class MeetingsService {
   async getMyMeetings(
     userId: number,
     statusQuery: string = 'all',
+    viewQuery: string = 'all',
     dto: MeetingPageOptionsDto,
   ): Promise<PageDto<MyMeetingDto>> {
     const { page = 1, limit = 10 } = dto;
     const skip = (page - 1) * limit;
     const now = new Date();
 
-    let where: Prisma.MeetingWhereInput = {
-      meetingDeleted: false,
-    };
+    const conditions: Prisma.MeetingWhereInput[] = [{ meetingDeleted: false }];
+    if (viewQuery === 'hosted') {
+      conditions.push({ hostId: userId });
+    } else if (viewQuery === 'joined') {
+      conditions.push({
+        hostId: { not: userId },
+        participations: { some: { userId } },
+      });
+    } else {
+      conditions.push({ participations: { some: { userId } } });
+    }
 
     if (statusQuery === 'pending') {
-      where = {
-        participations: {
-          some: { userId: userId, status: 'PENDING' },
-        },
-      };
+      conditions.push({
+        participations: { some: { userId, status: 'PENDING' } },
+      });
     } else if (statusQuery === 'accepted') {
-      where = {
-        meetingDate: { gte: now },
-        OR: [
-          { hostId: userId },
-          { participations: { some: { userId: userId, status: 'ACCEPTED' } } },
-        ],
-      };
+      conditions.push({ meetingDate: { gte: now } });
+      conditions.push({
+        participations: { some: { userId, status: 'ACCEPTED' } },
+      });
     } else if (statusQuery === 'completed') {
-      where = {
-        meetingDate: { lt: now },
-        OR: [
-          { hostId: userId },
-          { participations: { some: { userId: userId, status: 'ACCEPTED' } } },
-        ],
-      };
-    } else {
-      where.OR = [
-        { hostId: userId },
-        { participations: { some: { userId: userId } } },
-      ];
+      conditions.push({ meetingDate: { lt: now } });
+      conditions.push({
+        participations: { some: { userId, status: 'ACCEPTED' } },
+      });
     }
+
+    const where: Prisma.MeetingWhereInput = { AND: conditions };
+
     try {
       const [totalCount, meetings] = await Promise.all([
         this.prisma.meeting.count({ where }),

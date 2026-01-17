@@ -24,6 +24,7 @@ import { JwtPayload } from '../../auth/jwt-payload.interface';
 import { ParticipationUpdateItem } from './dto/update-participation.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadedFile, UseInterceptors } from '@nestjs/common';
+import { MyMeetingPageOptionsDto } from './dto/my-meeting-page-options.dto';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -75,7 +76,7 @@ export class MeetingsController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMyMeetings(
-    @Query() pageOptionsDto: MeetingPageOptionsDto,
+    @Query() pageOptionsDto: MyMeetingPageOptionsDto,
     @Req() req: express.Request & { user: JwtPayload },
     @Res() res: express.Response,
   ) {
@@ -84,6 +85,7 @@ export class MeetingsController {
       const result = await this.meetingsService.getMyMeetings(
         userId,
         pageOptionsDto.status,
+        pageOptionsDto.view,
         pageOptionsDto,
       );
 
@@ -137,14 +139,11 @@ export class MeetingsController {
   ) {
     try {
       const userId = req.user.id;
-      const result = await this.participationsService.createParticipation(
-        meetingId,
-        userId,
-      );
-      return res.status(HttpStatus.CREATED).json(result);
+      await this.participationsService.createParticipation(meetingId, userId);
+      return res.status(HttpStatus.CREATED).send();
     } catch (error) {
       if (error instanceof HttpException)
-        return res.status(error.getStatus()).send();
+        return res.status(error.getStatus()).send(error.message);
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }
   }

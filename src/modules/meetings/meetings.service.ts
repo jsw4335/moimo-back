@@ -18,6 +18,7 @@ import { PageDto } from '../common/dto/page.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { MeetingItemDto, MyMeetingDto } from './dto/meeting-item.dto';
 import { UploadService } from '../upload/upload.service';
+import { UpdateMeetingDto } from './dto/update-meeting.dto';
 
 interface KakaoAddressDocument {
   x: string;
@@ -109,6 +110,91 @@ export class MeetingsService {
 
       return meeting;
     });
+  }
+
+  async updateMyMeeting(
+    meetingId: number,
+    userId: number,
+    dto: UpdateMeetingDto,
+    file?: Express.Multer.File,
+  ) {
+    const existingMeeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+    });
+
+    if (!existingMeeting || existingMeeting.meetingDeleted) {
+      throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
+    }
+
+    if (existingMeeting.hostId !== userId) {
+      throw new ForbiddenException('모임 수정 권한이 없습니다.');
+    }
+
+    if (
+      dto.maxParticipants &&
+      dto.maxParticipants < existingMeeting.currentParticipants
+    ) {
+      throw new BadRequestException(
+        `최대 인원은 현재 참여 인원(${existingMeeting.currentParticipants}명)보다 적을 수 없습니다.`,
+      );
+    }
+
+    let imageUrl = existingMeeting.image;
+    let latitude = existingMeeting.latitude;
+    let longitude = existingMeeting.longitude;
+
+    if (file) {
+      imageUrl = await this.uploadService.uploadFile('meeting', file);
+    }
+
+    if (dto.address && dto.address !== existingMeeting.address) {
+      try {
+        const kakaoResponse = await axios.get<KakaoAddressResponse>(
+          'https://dapi.kakao.com/v2/local/search/address.json',
+          {
+            params: { query: dto.address },
+            headers: {
+              Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`,
+            },
+          },
+        );
+        const document = kakaoResponse.data.documents[0];
+        if (document) {
+          longitude = parseFloat(document.x);
+          latitude = parseFloat(document.y);
+        }
+      } catch {
+        throw new InternalServerErrorException(
+          '주소 변환 중 오류가 발생했습니다.',
+        );
+      }
+    }
+
+    try {
+      await this.prisma.meeting.update({
+        where: { id: meetingId },
+        data: {
+          title: dto.title,
+          description: dto.description,
+          interestId: dto.interestId ? Number(dto.interestId) : undefined,
+          maxParticipants: dto.maxParticipants
+            ? Number(dto.maxParticipants)
+            : undefined,
+          meetingDate: dto.meetingDate
+            ? new Date(`${dto.meetingDate}+09:00`)
+            : undefined,
+          address: dto.address,
+          latitude,
+          longitude,
+          image: imageUrl,
+        },
+      });
+      return;
+    } catch {
+      throw new InternalServerErrorException(
+        '모임 정보 수정 중 오류가 발생했습니다.',
+      );
+    }
   }
 
   async findAll(dto: MeetingPageOptionsDto): Promise<PageDto<MeetingItemDto>> {

@@ -7,11 +7,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  Participation,
-  ParticipationStatus,
-  NotificationType,
-} from '@prisma/client';
+import { ParticipationStatus, NotificationType } from '@prisma/client';
 import { ParticipationUpdateItem } from './dto/update-participation.dto';
 
 @Injectable()
@@ -166,7 +162,6 @@ export class ParticipationsService {
       }
 
       let tempAcceptedCount = meeting.currentParticipants;
-      const results: Participation[] = [];
 
       for (const update of updates) {
         const currentParticipation = await tx.participation.findUnique({
@@ -234,11 +229,9 @@ export class ParticipationsService {
             },
           });
         }
-
-        results.push(updatedParticipation);
       }
 
-      return results;
+      return;
     });
   }
 

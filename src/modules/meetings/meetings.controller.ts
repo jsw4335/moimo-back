@@ -25,6 +25,7 @@ import { ParticipationUpdateItem } from './dto/update-participation.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadedFile, UseInterceptors } from '@nestjs/common';
 import { MyMeetingPageOptionsDto } from './dto/my-meeting-page-options.dto';
+import { UpdateMeetingDto } from './dto/update-meeting.dto';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -169,21 +170,51 @@ export class MeetingsController {
     }
   }
 
+  @Put(':meetingId')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('meetingImage'))
+  async update(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Body() dto: UpdateMeetingDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      const userId = req.user.id;
+
+      await this.meetingsService.updateMyMeeting(meetingId, userId, dto, file);
+
+      return res.status(HttpStatus.NO_CONTENT).send();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
   @Put(':meetingId/participations')
   @UseGuards(JwtAuthGuard)
   async updateParticipationStatuses(
     @Param('meetingId', ParseIntPipe) meetingId: number,
     @Body() updates: ParticipationUpdateItem[],
     @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
   ) {
-    //이 부분 배포할때는 필요가 없는데, 지금 로컬에서 테스트할 때 빠르게 확인을 하기 위해서 남겨뒀습니다
-    //추후에DB에서 수정하는 부분은 await로 남겨두고
-    // return부분에는 res.status(HttpStatus.NO_CONTENT).send();로 수정할 예정입니다.
-    return this.participationsService.updateStatuses(
-      meetingId,
-      req.user.id,
-      updates,
-    );
+    try {
+      await this.participationsService.updateStatuses(
+        meetingId,
+        req.user.id,
+        updates,
+      );
+      return res.status(HttpStatus.NO_CONTENT).send();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
   }
 
   @Delete(':meetingId/participations/:participationId')

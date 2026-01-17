@@ -9,7 +9,7 @@ async function bootstrap() {
 
   //CORS 설정
   app.enableCors({
-    origin: [process.env.FRONTEND_URL, 'https://moimo-front.vercel.app'],
+    origin: [process.env.FRONTEND_URL, 'https://moimo.vercel.app'],
 
     credentials: true, // 쿠키/인증정보 포함 여부
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',

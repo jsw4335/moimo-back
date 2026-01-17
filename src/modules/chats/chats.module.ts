@@ -3,9 +3,15 @@ import { ChatController } from './chats.controller';
 import { ChatService } from './chats.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChatGateway } from './chats.gateway';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [],
+  imports: [
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'yourSecretKey',
+      signOptions: { expiresIn: '1h' },
+    }),
+  ],
   controllers: [ChatController], // REST API 엔드포인트
   providers: [
     ChatService, // DB 작업 및 비즈니스 로직

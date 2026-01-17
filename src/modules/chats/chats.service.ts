@@ -34,6 +34,7 @@ export class ChatService {
         meetingId: meeting.id,
         title: meeting.title,
         image: meeting.image,
+        hostId: meeting.hostId,
         lastMessage: lastMessage
           ? {
               sender: lastMessage.sender.nickname,

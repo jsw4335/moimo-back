@@ -21,7 +21,6 @@ import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { MeetingPageOptionsDto } from './dto/meeting-page-options.dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { JwtPayload } from '../../auth/jwt-payload.interface';
-import { ParticipationUpdateItem } from './dto/update-participation.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadedFile, UseInterceptors } from '@nestjs/common';
 import { MyMeetingPageOptionsDto } from './dto/my-meeting-page-options.dto';
@@ -194,51 +193,51 @@ export class MeetingsController {
     }
   }
 
-  @Put(':meetingId/participations')
-  @UseGuards(JwtAuthGuard)
-  async updateParticipationStatuses(
-    @Param('meetingId', ParseIntPipe) meetingId: number,
-    @Body() updates: ParticipationUpdateItem[],
-    @Req() req: express.Request & { user: JwtPayload },
-    @Res() res: express.Response,
-  ) {
-    try {
-      await this.participationsService.updateStatuses(
-        meetingId,
-        req.user.id,
-        updates,
-      );
-      return res.status(HttpStatus.NO_CONTENT).send();
-    } catch (error) {
-      if (error instanceof HttpException) {
-        return res.status(error.getStatus()).json({ message: error.message });
-      }
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
-    }
-  }
+  // @Put(':meetingId/participations')
+  // @UseGuards(JwtAuthGuard)
+  // async updateParticipationStatuses(
+  //   @Param('meetingId', ParseIntPipe) meetingId: number,
+  //   @Body() updates: ParticipationUpdateItem[],
+  //   @Req() req: express.Request & { user: JwtPayload },
+  //   @Res() res: express.Response,
+  // ) {
+  //   try {
+  //     await this.participationsService.updateStatuses(
+  //       meetingId,
+  //       req.user.id,
+  //       updates,
+  //     );
+  //     return res.status(HttpStatus.NO_CONTENT).send();
+  //   } catch (error) {
+  //     if (error instanceof HttpException) {
+  //       return res.status(error.getStatus()).json({ message: error.message });
+  //     }
+  //     return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+  //   }
+  // }
 
-  @Delete(':meetingId/participations/:participationId')
-  @UseGuards(JwtAuthGuard)
-  async deleteParticipation(
-    @Param('meetingId', ParseIntPipe) meetingId: number,
-    @Param('participationId', ParseIntPipe) participationId: number,
-    @Req() req: express.Request & { user: JwtPayload },
-    @Res() res: express.Response,
-  ) {
-    try {
-      const userId = req.user.id;
-      await this.participationsService.deleteParticipation(
-        meetingId,
-        participationId,
-        userId,
-      );
-      return res.status(HttpStatus.NO_CONTENT).send();
-    } catch (error) {
-      if (error instanceof HttpException)
-        return res.status(error.getStatus()).send();
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
-    }
-  }
+  // @Delete(':meetingId/participations/:participationId')
+  // @UseGuards(JwtAuthGuard)
+  // async deleteParticipation(
+  //   @Param('meetingId', ParseIntPipe) meetingId: number,
+  //   @Param('participationId', ParseIntPipe) participationId: number,
+  //   @Req() req: express.Request & { user: JwtPayload },
+  //   @Res() res: express.Response,
+  // ) {
+  //   try {
+  //     const userId = req.user.id;
+  //     await this.participationsService.deleteParticipation(
+  //       meetingId,
+  //       participationId,
+  //       userId,
+  //     );
+  //     return res.status(HttpStatus.NO_CONTENT).send();
+  //   } catch (error) {
+  //     if (error instanceof HttpException)
+  //       return res.status(error.getStatus()).send();
+  //     return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+  //   }
+  // }
 
   @Delete(':meetingId')
   @UseGuards(JwtAuthGuard)
@@ -251,6 +250,29 @@ export class MeetingsController {
       const userId = req.user.id;
       await this.meetingsService.softDelete(meetingId, userId);
 
+      return res.status(HttpStatus.NO_CONTENT).send();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
+  @Put(':meetingId/participations/:participationId/approve')
+  @UseGuards(JwtAuthGuard)
+  async approveOne(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Param('participationId', ParseIntPipe) participationId: number,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      await this.participationsService.approveOne(
+        meetingId,
+        req.user.id,
+        participationId,
+      );
       return res.status(HttpStatus.NO_CONTENT).send();
     } catch (error) {
       if (error instanceof HttpException) {

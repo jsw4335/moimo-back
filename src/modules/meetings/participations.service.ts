@@ -7,8 +7,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ParticipationStatus, NotificationType } from '@prisma/client';
-import { ParticipationUpdateItem } from './dto/update-participation.dto';
+import { ParticipationStatus, NotificationType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ParticipationsService {
@@ -133,181 +132,78 @@ export class ParticipationsService {
     }));
   }
 
-  async updateStatuses(
+  async approveOne(
     meetingId: number,
-    userId: number,
-    updates: ParticipationUpdateItem[],
-  ) {
-    return await this.prisma.$transaction(async (tx) => {
+    hostId: number,
+    pId: number,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // 1. 호스트 권한 및 모임 정보 확인
       const meeting = await tx.meeting.findUnique({
         where: { id: meetingId },
-        select: {
-          hostId: true,
-          maxParticipants: true,
-          currentParticipants: true,
-          meetingDeleted: true,
-        },
       });
 
       if (!meeting) throw new NotFoundException('모임을 찾을 수 없습니다.');
-      if (meeting.meetingDeleted) {
-        throw new GoneException(
-          '삭제된 모임입니다. 상태를 변경할 수 없습니다.',
+      if (meeting.hostId !== hostId) {
+        throw new ForbiddenException('호스트만 승인할 수 있습니다.');
+      }
+
+      // 2. 정원 체크 (meeting이 Meeting 타입으로 추론되어 에러가 나지 않습니다.)
+      if (meeting.currentParticipants >= meeting.maxParticipants) {
+        throw new BadRequestException(
+          `정원이 초과되었습니다. (최대 ${meeting.maxParticipants}명)`,
         );
       }
-      if (meeting.hostId !== userId) {
-        throw new ForbiddenException(
-          '호스트만 신청 상태를 변경할 수 있습니다.',
-        );
-      }
 
-      let tempAcceptedCount = meeting.currentParticipants;
-
-      for (const update of updates) {
-        const currentParticipation = await tx.participation.findUnique({
-          where: { id: update.participationId },
-        });
-
-        if (
-          !currentParticipation ||
-          currentParticipation.status === update.status
-        )
-          continue;
-
-        if (update.status === ParticipationStatus.ACCEPTED) {
-          if (tempAcceptedCount >= meeting.maxParticipants) {
-            throw new BadRequestException(
-              `정원이 초과되었습니다. (최대 ${meeting.maxParticipants}명)`,
-            );
-          }
-
-          tempAcceptedCount++;
-          await tx.meeting.update({
-            where: { id: meetingId },
-            data: { currentParticipants: { increment: 1 } },
-          });
-        } else if (
-          currentParticipation.status === ParticipationStatus.ACCEPTED
-        ) {
-          tempAcceptedCount--;
-          await tx.meeting.update({
-            where: { id: meetingId },
-            data: { currentParticipants: { decrement: 1 } },
-          });
-        }
-
-        const updatedParticipation = await tx.participation.update({
-          where: {
-            id: update.participationId,
-            meetingId: meetingId,
-          },
-          data: { status: update.status },
-        });
-
-        await tx.notification.updateMany({
-          where: {
-            meetingId: meetingId,
-            receiverId: userId,
-            senderId: updatedParticipation.userId,
-            type: NotificationType.PARTICIPATION_REQUEST,
-            isRead: false,
-          },
-          data: { isRead: true },
-        });
-
-        if (update.status !== ParticipationStatus.PENDING) {
-          await tx.notification.create({
-            data: {
-              meetingId: meetingId,
-              receiverId: updatedParticipation.userId,
-              senderId: userId,
-              type:
-                update.status === ParticipationStatus.ACCEPTED
-                  ? NotificationType.PARTICIPATION_ACCEPTED
-                  : NotificationType.PARTICIPATION_REJECTED,
-              isRead: false,
-            },
-          });
-        }
-      }
-
-      return;
-    });
-  }
-
-  async deleteParticipation(
-    meetingId: number,
-    participationId: number,
-    userId: number,
-  ) {
-    const participation = await this.prisma.participation.findUnique({
-      where: { id: participationId },
-      include: { meeting: true },
-    });
-
-    if (!participation || participation.meetingId !== meetingId) {
-      throw new NotFoundException('참여 정보를 찾을 수 없습니다.');
-    }
-
-    if (participation.meeting.meetingDeleted) {
-      throw new GoneException('삭제된 모임의 참여 정보는 변경할 수 없습니다.');
-    }
-
-    const isHost = participation.meeting.hostId === userId;
-    const isParticipant = participation.userId === userId;
-
-    if (isHost && participation.userId === userId) {
-      throw new BadRequestException(
-        '호스트는 참여 명단에서 본인을 삭제할 수 없습니다.',
-      );
-    }
-
-    if (!isHost && !isParticipant) {
-      throw new ForbiddenException('권한이 없습니다.');
-    }
-
-    return await this.prisma.$transaction(async (tx) => {
-      if (participation.status === ParticipationStatus.ACCEPTED) {
-        await tx.meeting.update({
-          where: { id: meetingId },
-          data: { currentParticipants: { decrement: 1 } },
-        });
-      }
-
-      await tx.participation.delete({
-        where: { id: participationId },
+      // 3. 신청서 상태 확인
+      const participation = await tx.participation.findUnique({
+        where: { id: pId },
       });
 
-      if (isParticipant) {
-        await tx.notification.deleteMany({
-          where: {
-            meetingId,
-            senderId: userId,
-            receiverId: participation.meeting.hostId,
-            type: NotificationType.PARTICIPATION_REQUEST,
-          },
-        });
-      } else if (isHost) {
-        await tx.notification.create({
-          data: {
-            meetingId,
-            receiverId: participation.userId,
-            senderId: userId,
-            type: NotificationType.PARTICIPATION_REJECTED,
-            isRead: false,
-          },
-        });
-
-        await tx.notification.deleteMany({
-          where: {
-            meetingId,
-            senderId: participation.userId,
-            receiverId: userId,
-            type: NotificationType.PARTICIPATION_REQUEST,
-          },
-        });
+      if (
+        !participation ||
+        participation.status !== ParticipationStatus.PENDING
+      ) {
+        throw new BadRequestException('승인 대기 중인 신청자가 아닙니다.');
       }
 
+      // 4. 상태 업데이트 (ACCEPTED)
+      await tx.participation.update({
+        where: { id: pId },
+        data: { status: ParticipationStatus.ACCEPTED },
+      });
+
+      // 5. 모임 현재 인원수 증가 (+1)
+      await tx.meeting.update({
+        where: { id: meetingId },
+        data: { currentParticipants: { increment: 1 } },
+      });
+
+      // 6. 알림 처리
+      // 호스트가 받았던 '참여 신청' 알림을 읽음 처리합니다.
+      await tx.notification.updateMany({
+        where: {
+          meetingId,
+          receiverId: hostId,
+          senderId: participation.userId,
+          type: NotificationType.PARTICIPATION_REQUEST,
+          isRead: false,
+        },
+        data: { isRead: true },
+      });
+
+      // 참여자에게 '승인됨' 알림을 보냅니다.
+      await tx.notification.create({
+        data: {
+          meetingId,
+          receiverId: participation.userId,
+          senderId: hostId,
+          type: NotificationType.PARTICIPATION_ACCEPTED,
+          isRead: false,
+        },
+      });
+
+      // 반환값 없이 트랜잭션 종료
       return;
     });
   }

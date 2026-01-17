@@ -524,6 +524,7 @@ export class MeetingsService {
       const kstMeetingDate = new Date(
         m.meetingDate.getTime() + 9 * 60 * 60 * 1000,
       );
+      const formattedDate = kstMeetingDate.toISOString().split('.')[0];
 
       return {
         id: m.id,
@@ -532,7 +533,7 @@ export class MeetingsService {
         interestName: m.interest.name,
         currentParticipants: m.currentParticipants,
         maxParticipants: m.maxParticipants,
-        meetingDate: kstMeetingDate,
+        meetingDate: formattedDate,
         address: m.address,
         hostNickname: m.host.nickname,
       };

@@ -322,4 +322,73 @@ export class ParticipationsService {
       }
     });
   }
+
+  async cancelApproval(
+    meetingId: number,
+    hostId: number,
+    pId: number,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const meeting = await tx.meeting.findUnique({
+        where: { id: meetingId },
+      });
+
+      if (!meeting) throw new NotFoundException('모임을 찾을 수 없습니다.');
+      if (meeting.hostId !== hostId) {
+        throw new ForbiddenException('호스트만 승인을 취소할 수 있습니다.');
+      }
+
+      const participation = await tx.participation.findUnique({
+        where: { id: pId },
+      });
+
+      if (
+        !participation ||
+        participation.status !== ParticipationStatus.ACCEPTED
+      ) {
+        throw new BadRequestException('취소 가능한 승인 상태가 아닙니다.');
+      }
+
+      await tx.participation.update({
+        where: { id: pId },
+        data: { status: ParticipationStatus.PENDING },
+      });
+
+      await tx.meeting.update({
+        where: { id: meetingId },
+        data: { currentParticipants: { decrement: 1 } },
+      });
+
+      await tx.notification.deleteMany({
+        where: {
+          meetingId,
+          receiverId: participation.userId,
+          senderId: hostId,
+          type: NotificationType.PARTICIPATION_ACCEPTED,
+        },
+      });
+
+      await tx.notification.create({
+        data: {
+          meetingId,
+          receiverId: participation.userId,
+          senderId: hostId,
+          type: NotificationType.PARTICIPATION_CANCELLED,
+          isRead: false,
+        },
+      });
+
+      await tx.notification.updateMany({
+        where: {
+          meetingId,
+          receiverId: hostId,
+          senderId: participation.userId,
+          type: NotificationType.PARTICIPATION_REQUEST,
+        },
+        data: { isRead: false },
+      });
+
+      return;
+    });
+  }
 }

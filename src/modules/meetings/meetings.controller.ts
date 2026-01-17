@@ -278,4 +278,28 @@ export class MeetingsController {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }
   }
+
+  @Put(':meetingId/participations/:participationId/cancel')
+  @UseGuards(JwtAuthGuard)
+  async cancelApproval(
+    @Param('meetingId', ParseIntPipe) meetingId: number,
+    @Param('participationId', ParseIntPipe) participationId: number,
+    @Req() req: express.Request & { user: JwtPayload },
+    @Res() res: express.Response,
+  ) {
+    try {
+      await this.participationsService.cancelApproval(
+        meetingId,
+        req.user.id,
+        participationId,
+      );
+
+      return res.status(HttpStatus.NO_CONTENT).send();
+    } catch (error: unknown) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
 }

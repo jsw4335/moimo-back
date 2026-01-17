@@ -88,7 +88,7 @@ export class MeetingsService {
           title: dto.title,
           description: dto.description,
           maxParticipants: Number(dto.maxParticipants),
-          meetingDate: new Date(dto.meetingDate),
+          meetingDate: new Date(`${dto.meetingDate}+09:00`),
           interestId: Number(dto.interestId),
           address: dto.address,
           latitude: latitude,
@@ -161,16 +161,22 @@ export class MeetingsService {
         }),
       ]);
 
-      const mappedData: MeetingItemDto[] = meetings.map((meeting) => ({
-        meetingId: meeting.id,
-        title: meeting.title,
-        meetingImage: meeting.image,
-        interestName: meeting.interest.name,
-        maxParticipants: meeting.maxParticipants,
-        currentParticipants: meeting.currentParticipants,
-        address: meeting.address,
-        meetingDate: meeting.meetingDate,
-      }));
+      const mappedData: MeetingItemDto[] = meetings.map((meeting) => {
+        const kstMeetingDate = new Date(
+          meeting.meetingDate.getTime() + 9 * 60 * 60 * 1000,
+        );
+
+        return {
+          meetingId: meeting.id,
+          title: meeting.title,
+          meetingImage: meeting.image,
+          interestName: meeting.interest.name,
+          maxParticipants: meeting.maxParticipants,
+          currentParticipants: meeting.currentParticipants,
+          address: meeting.address,
+          meetingDate: kstMeetingDate,
+        };
+      });
 
       return new PageDto(mappedData, new PageMetaDto(totalCount, page, limit));
     } catch {
@@ -203,6 +209,10 @@ export class MeetingsService {
       throw new GoneException('삭제된 모임입니다.');
     }
 
+    const kstMeetingDate = new Date(
+      meeting.meetingDate.getTime() + 9 * 60 * 60 * 1000,
+    );
+
     return {
       id: meeting.id,
       title: meeting.title,
@@ -211,7 +221,7 @@ export class MeetingsService {
       interestId: meeting.interestId,
       maxParticipants: meeting.maxParticipants,
       currentParticipants: meeting.currentParticipants,
-      meetingDate: meeting.meetingDate,
+      meetingDate: kstMeetingDate,
       location: {
         address: meeting.address,
         lat: meeting.latitude,
@@ -291,6 +301,10 @@ export class MeetingsService {
           ? 'ACCEPTED'
           : m.participations[0]?.status || 'PENDING';
 
+        const kstMeetingDate = new Date(
+          m.meetingDate.getTime() + 9 * 60 * 60 * 1000,
+        );
+
         return {
           meetingId: m.id,
           title: m.title,
@@ -298,7 +312,7 @@ export class MeetingsService {
           maxParticipants: m.maxParticipants,
           currentParticipants: m.currentParticipants,
           address: m.address,
-          meetingDate: m.meetingDate,
+          meetingDate: kstMeetingDate,
           status: myStatus,
           isHost: isHost,
           isCompleted: isCompleted,
@@ -417,16 +431,22 @@ export class MeetingsService {
       },
     });
 
-    return meetings.map((m) => ({
-      id: m.id,
-      title: m.title,
-      meetingImage: m.image,
-      interestName: m.interest.name,
-      currentParticipants: m.currentParticipants,
-      maxParticipants: m.maxParticipants,
-      meetingDate: m.meetingDate,
-      address: m.address,
-      hostNickname: m.host.nickname,
-    }));
+    return meetings.map((m) => {
+      const kstMeetingDate = new Date(
+        m.meetingDate.getTime() + 9 * 60 * 60 * 1000,
+      );
+
+      return {
+        id: m.id,
+        title: m.title,
+        meetingImage: m.image,
+        interestName: m.interest.name,
+        currentParticipants: m.currentParticipants,
+        maxParticipants: m.maxParticipants,
+        meetingDate: kstMeetingDate,
+        address: m.address,
+        hostNickname: m.host.nickname,
+      };
+    });
   }
 }

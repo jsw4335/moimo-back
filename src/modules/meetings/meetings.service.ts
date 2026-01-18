@@ -18,6 +18,7 @@ import { PageDto } from '../common/dto/page.dto';
 import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { MeetingItemDto, MyMeetingDto } from './dto/meeting-item.dto';
 import { UploadService } from '../upload/upload.service';
+import { UpdateMeetingDto } from './dto/update-meeting.dto';
 
 interface KakaoAddressDocument {
   x: string;
@@ -88,7 +89,7 @@ export class MeetingsService {
           title: dto.title,
           description: dto.description,
           maxParticipants: Number(dto.maxParticipants),
-          meetingDate: new Date(dto.meetingDate),
+          meetingDate: new Date(`${dto.meetingDate}+09:00`),
           interestId: Number(dto.interestId),
           address: dto.address,
           latitude: latitude,
@@ -109,6 +110,91 @@ export class MeetingsService {
 
       return meeting;
     });
+  }
+
+  async updateMyMeeting(
+    meetingId: number,
+    userId: number,
+    dto: UpdateMeetingDto,
+    file?: Express.Multer.File,
+  ) {
+    const existingMeeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+    });
+
+    if (!existingMeeting || existingMeeting.meetingDeleted) {
+      throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
+    }
+
+    if (existingMeeting.hostId !== userId) {
+      throw new ForbiddenException('모임 수정 권한이 없습니다.');
+    }
+
+    if (
+      dto.maxParticipants &&
+      dto.maxParticipants < existingMeeting.currentParticipants
+    ) {
+      throw new BadRequestException(
+        `최대 인원은 현재 참여 인원(${existingMeeting.currentParticipants}명)보다 적을 수 없습니다.`,
+      );
+    }
+
+    let imageUrl = existingMeeting.image;
+    let latitude = existingMeeting.latitude;
+    let longitude = existingMeeting.longitude;
+
+    if (file) {
+      imageUrl = await this.uploadService.uploadFile('meeting', file);
+    }
+
+    if (dto.address && dto.address !== existingMeeting.address) {
+      try {
+        const kakaoResponse = await axios.get<KakaoAddressResponse>(
+          'https://dapi.kakao.com/v2/local/search/address.json',
+          {
+            params: { query: dto.address },
+            headers: {
+              Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`,
+            },
+          },
+        );
+        const document = kakaoResponse.data.documents[0];
+        if (document) {
+          longitude = parseFloat(document.x);
+          latitude = parseFloat(document.y);
+        }
+      } catch {
+        throw new InternalServerErrorException(
+          '주소 변환 중 오류가 발생했습니다.',
+        );
+      }
+    }
+
+    try {
+      await this.prisma.meeting.update({
+        where: { id: meetingId },
+        data: {
+          title: dto.title,
+          description: dto.description,
+          interestId: dto.interestId ? Number(dto.interestId) : undefined,
+          maxParticipants: dto.maxParticipants
+            ? Number(dto.maxParticipants)
+            : undefined,
+          meetingDate: dto.meetingDate
+            ? new Date(`${dto.meetingDate}+09:00`)
+            : undefined,
+          address: dto.address,
+          latitude,
+          longitude,
+          image: imageUrl,
+        },
+      });
+      return;
+    } catch {
+      throw new InternalServerErrorException(
+        '모임 정보 수정 중 오류가 발생했습니다.',
+      );
+    }
   }
 
   async findAll(dto: MeetingPageOptionsDto): Promise<PageDto<MeetingItemDto>> {
@@ -161,16 +247,23 @@ export class MeetingsService {
         }),
       ]);
 
-      const mappedData: MeetingItemDto[] = meetings.map((meeting) => ({
-        meetingId: meeting.id,
-        title: meeting.title,
-        meetingImage: meeting.image,
-        interestName: meeting.interest.name,
-        maxParticipants: meeting.maxParticipants,
-        currentParticipants: meeting.currentParticipants,
-        address: meeting.address,
-        meetingDate: meeting.meetingDate,
-      }));
+      const mappedData: MeetingItemDto[] = meetings.map((meeting) => {
+        const kstMeetingDate = new Date(
+          meeting.meetingDate.getTime() + 9 * 60 * 60 * 1000,
+        );
+        const formattedDate = kstMeetingDate.toISOString().split('.')[0];
+
+        return {
+          meetingId: meeting.id,
+          title: meeting.title,
+          meetingImage: meeting.image,
+          interestName: meeting.interest.name,
+          maxParticipants: meeting.maxParticipants,
+          currentParticipants: meeting.currentParticipants,
+          address: meeting.address,
+          meetingDate: formattedDate,
+        };
+      });
 
       return new PageDto(mappedData, new PageMetaDto(totalCount, page, limit));
     } catch {
@@ -203,15 +296,21 @@ export class MeetingsService {
       throw new GoneException('삭제된 모임입니다.');
     }
 
+    const kstMeetingDate = new Date(
+      meeting.meetingDate.getTime() + 9 * 60 * 60 * 1000,
+    );
+
+    const formattedDate = kstMeetingDate.toISOString().split('.')[0];
+
     return {
-      id: meeting.id,
+      meetingId: meeting.id,
       title: meeting.title,
       meetingImage: meeting.image,
       description: meeting.description,
       interestId: meeting.interestId,
       maxParticipants: meeting.maxParticipants,
       currentParticipants: meeting.currentParticipants,
-      meetingDate: meeting.meetingDate,
+      meetingDate: formattedDate,
       location: {
         address: meeting.address,
         lat: meeting.latitude,
@@ -274,9 +373,8 @@ export class MeetingsService {
           skip,
           take: limit,
           include: {
-            interest: { select: { name: true } },
             participations: {
-              where: { userId: userId },
+              where: { userId },
               select: { status: true },
             },
           },
@@ -291,17 +389,22 @@ export class MeetingsService {
           ? 'ACCEPTED'
           : m.participations[0]?.status || 'PENDING';
 
+        const kstMeetingDate = new Date(
+          m.meetingDate.getTime() + 9 * 60 * 60 * 1000,
+        );
+
+        const formattedDate = kstMeetingDate.toISOString().split('.')[0];
+
         return {
           meetingId: m.id,
           title: m.title,
-          interestName: m.interest.name,
           maxParticipants: m.maxParticipants,
           currentParticipants: m.currentParticipants,
           address: m.address,
-          meetingDate: m.meetingDate,
+          meetingDate: formattedDate,
           status: myStatus,
-          isHost: isHost,
-          isCompleted: isCompleted,
+          isHost,
+          isCompleted,
         };
       });
 
@@ -330,6 +433,10 @@ export class MeetingsService {
       throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
     }
 
+    if (meeting.meetingDeleted) {
+      throw new GoneException('이미 삭제된 모임입니다.');
+    }
+
     if (meeting.hostId !== userId) {
       throw new ForbiddenException('모임 주최자만 삭제할 수 있습니다.');
     }
@@ -346,12 +453,14 @@ export class MeetingsService {
           data: { meetingDeleted: true },
         });
 
-        const notifications = meeting.participations.map((p) => ({
-          receiverId: p.userId,
-          senderId: userId,
-          meetingId: meetingId,
-          type: NotificationType.MEETING_DELETED,
-        }));
+        const notifications = meeting.participations
+          .filter((p) => p.userId !== userId)
+          .map((p) => ({
+            receiverId: p.userId,
+            senderId: userId,
+            meetingId: meetingId,
+            type: NotificationType.MEETING_DELETED,
+          }));
 
         if (notifications.length > 0) {
           await tx.notification.createMany({
@@ -417,16 +526,23 @@ export class MeetingsService {
       },
     });
 
-    return meetings.map((m) => ({
-      id: m.id,
-      title: m.title,
-      meetingImage: m.image,
-      interestName: m.interest.name,
-      currentParticipants: m.currentParticipants,
-      maxParticipants: m.maxParticipants,
-      meetingDate: m.meetingDate,
-      address: m.address,
-      hostNickname: m.host.nickname,
-    }));
+    return meetings.map((m) => {
+      const kstMeetingDate = new Date(
+        m.meetingDate.getTime() + 9 * 60 * 60 * 1000,
+      );
+      const formattedDate = kstMeetingDate.toISOString().split('.')[0];
+
+      return {
+        id: m.id,
+        title: m.title,
+        meetingImage: m.image,
+        interestName: m.interest.name,
+        currentParticipants: m.currentParticipants,
+        maxParticipants: m.maxParticipants,
+        meetingDate: formattedDate,
+        address: m.address,
+        hostNickname: m.host.nickname,
+      };
+    });
   }
 }

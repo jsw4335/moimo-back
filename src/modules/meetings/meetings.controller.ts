@@ -25,6 +25,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadedFile, UseInterceptors } from '@nestjs/common';
 import { MyMeetingPageOptionsDto } from './dto/my-meeting-page-options.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
+import { MeetingItemDto } from './dto/meeting-item.dto';
+import { PageDto } from '../common/dto/page.dto';
+import { SearchMeetingDto } from './dto/search-meeting.dto';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -100,19 +103,9 @@ export class MeetingsController {
 
   @Get('search')
   async search(
-    @Query('keyword') keyword: string,
-    @Res() res: express.Response,
-  ) {
-    try {
-      const result = await this.meetingsService.searchMeetings(keyword);
-
-      return res.status(HttpStatus.OK).json(result);
-    } catch (error) {
-      if (error instanceof HttpException) {
-        return res.status(error.getStatus()).json({ message: error.message });
-      }
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
-    }
+    @Query() searchDto: SearchMeetingDto,
+  ): Promise<PageDto<MeetingItemDto>> {
+    return await this.meetingsService.searchMeetings(searchDto);
   }
 
   @Get(':id')

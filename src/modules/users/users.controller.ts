@@ -57,6 +57,15 @@ export class UsersController {
     return await this.usersService.findAll();
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get('verify')
+  async verifyToken(@Req() req: Request & { user?: JwtPayload }) {
+    console.log(req.user);
+    if (!req.user) {
+      return { authenticated: false };
+    }
+    return this.usersService.verifyUser(req.user.id);
+  }
   @Get(':userId')
   async findUser(@Param('userId', ParseIntPipe) userId: number) {
     return this.usersService.findById(userId);
@@ -116,16 +125,6 @@ export class UsersController {
     res.clearCookie('refreshToken');
 
     return res.status(200).send();
-  }
-
-  @UseGuards(OptionalJwtAuthGuard)
-  @Get('verify')
-  async verifyToken(@Req() req: Request & { user?: JwtPayload }) {
-    console.log(req.user);
-    if (!req.user) {
-      return { authenticated: false };
-    }
-    return this.usersService.verifyUser(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)

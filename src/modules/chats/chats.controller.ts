@@ -37,6 +37,7 @@ export class ChatController {
     if (!req.user) {
       return { authenticated: false };
     }
+
     return this.chatService.createMessage(
       meetingId,
       req.user.id, // senderId는 토큰에서 가져옴

@@ -3,8 +3,9 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  WebSocketServer,
 } from '@nestjs/websockets';
-import { Socket } from 'socket.io';
+import { Socket, Server } from 'socket.io';
 import { ChatService } from './chats.service';
 import { UseGuards } from '@nestjs/common';
 import { WsJwtGuard } from '../../auth/ws-jwt.guard';
@@ -19,6 +20,9 @@ interface AuthenticatedSocket extends Socket {
 }
 @WebSocketGateway({ cors: true })
 export class ChatGateway {
+  @WebSocketServer()
+  server: Server;
+
   constructor(private readonly chatService: ChatService) {}
 
   @UseGuards(WsJwtGuard)
@@ -54,7 +58,9 @@ export class ChatGateway {
       user.id,
       data.content,
     );
-    client.to(String(data.meetingId)).emit('newMessage', message);
+
+    this.server.to(String(data.meetingId)).emit('newMessage', message);
+
     return message;
   }
 

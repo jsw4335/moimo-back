@@ -13,6 +13,7 @@ export class MeetingItemDto extends BaseMeetingDto {
 }
 
 export class MyMeetingDto extends BaseMeetingDto {
+  meetingImage: string | null;
   status: string;
   isHost: boolean;
   isCompleted: boolean;

@@ -60,7 +60,7 @@ export class UsersService {
     nickname: string,
     email: string,
     password: string,
-  ): Promise<User> {
+  ): Promise<{ accessToken: string; refreshToken: string; user: any }> {
     try {
       const checkEmail = await this.isEmailAvailable(email);
       if (!checkEmail) {
@@ -82,7 +82,19 @@ export class UsersService {
         },
       });
 
-      return created;
+      // 🔹 회원가입 직후 토큰 발급
+      const refreshToken = await this.issueOrRefreshToken(created);
+      const accessToken = this.issueAccessToken(created);
+
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          isNewUser: !created.bio,
+          email: created.email,
+          nickname: created.nickname,
+        },
+      };
     } catch (err: unknown) {
       if (err instanceof ConflictException) {
         throw err;

@@ -36,32 +36,27 @@ export class UsersController {
     @Body('nickname') nickname: string,
     @Body('email') email: string,
     @Body('password') password: string,
+    @Res() res: Response,
   ) {
-    if (!nickname || !email || !password) {
-      throw new BadRequestException();
-    }
+    const { accessToken, refreshToken, user } =
+      await this.usersService.registerUser(nickname, email, password);
 
-    const user = await this.usersService.registerUser(
-      nickname,
-      email,
-      password,
-    );
-    return { success: true, message: '회원가입 성공', user };
+    res.setHeader('Authorization', `Bearer ${accessToken}`);
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({ user });
   }
 
   @Get()
   async findAll() {
     return await this.usersService.findAll();
   }
-  @UseGuards(OptionalJwtAuthGuard)
-  @Get('verify')
-  async verifyToken(@Req() req: Request & { user?: JwtPayload }) {
-    console.log(req.user);
-    if (!req.user) {
-      return { authenticated: false };
-    }
-    return this.usersService.verifyUser(req.user.id);
-  }
+
   @Get(':userId')
   async findUser(@Param('userId', ParseIntPipe) userId: number) {
     return this.usersService.findById(userId);
@@ -121,6 +116,16 @@ export class UsersController {
     res.clearCookie('refreshToken');
 
     return res.status(200).send();
+  }
+
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get('verify')
+  async verifyToken(@Req() req: Request & { user?: JwtPayload }) {
+    console.log(req.user);
+    if (!req.user) {
+      return { authenticated: false };
+    }
+    return this.usersService.verifyUser(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)

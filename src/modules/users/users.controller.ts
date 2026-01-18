@@ -14,6 +14,7 @@ import {
   ConflictException,
   BadRequestException,
   Param,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
@@ -61,8 +62,8 @@ export class UsersController {
     }
     return this.usersService.verifyUser(req.user.id);
   }
-  @Get(':userId(\\d+)')
-  async findUser(@Param('userId') userId: number) {
+  @Get(':userId')
+  async findUser(@Param('userId', ParseIntPipe) userId: number) {
     return this.usersService.findById(userId);
   }
 

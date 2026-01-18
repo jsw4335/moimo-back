@@ -399,6 +399,7 @@ export class MeetingsService {
         return {
           meetingId: m.id,
           title: m.title,
+          meetingImage: m.image,
           maxParticipants: m.maxParticipants,
           currentParticipants: m.currentParticipants,
           address: m.address,

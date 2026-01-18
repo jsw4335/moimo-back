@@ -6,6 +6,7 @@ import {
   Body,
   UseGuards,
   Req,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ChatService } from './chats.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -47,7 +48,7 @@ export class ChatController {
   @UseGuards(JwtAuthGuard)
   @Get(':meetingId/messages')
   async getMessages(
-    @Param('meetingId') meetingId: number,
+    @Param('meetingId', ParseIntPipe) meetingId: number,
     @Req() req: Request & { user?: { id: number } },
   ) {
     if (!req.user) {

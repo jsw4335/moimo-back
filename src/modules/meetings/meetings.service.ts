@@ -19,6 +19,7 @@ import { PageMetaDto } from '../common/dto/page-meta.dto';
 import { MeetingItemDto, MyMeetingDto } from './dto/meeting-item.dto';
 import { UploadService } from '../upload/upload.service';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
+import { SearchMeetingDto } from './dto/search-meeting.dto';
 
 interface KakaoAddressDocument {
   x: string;
@@ -475,44 +476,33 @@ export class MeetingsService {
     }
   }
 
-  async searchMeetings(keyword: string) {
-    if (!keyword || keyword.trim() === '') {
-      throw new BadRequestException('검색어를 입력해주세요.');
-    }
-
+  async searchMeetings(
+    searchDto: SearchMeetingDto,
+  ): Promise<PageDto<MeetingItemDto>> {
+    const { keyword, page = 1, limit = 10 } = searchDto;
     const now = new Date();
+    const skip = (page - 1) * limit;
+
+    const whereCondition: Prisma.MeetingWhereInput = {
+      meetingDeleted: false,
+      meetingDate: {
+        gte: now,
+      },
+      OR: [
+        { title: { contains: keyword, mode: 'insensitive' } },
+        { interest: { name: { contains: keyword, mode: 'insensitive' } } },
+        { host: { nickname: { contains: keyword, mode: 'insensitive' } } },
+      ],
+    };
+
+    const totalCount = await this.prisma.meeting.count({
+      where: whereCondition,
+    });
 
     const meetings = await this.prisma.meeting.findMany({
-      where: {
-        meetingDeleted: false,
-        meetingDate: {
-          gte: now,
-        },
-        OR: [
-          {
-            title: {
-              contains: keyword,
-              mode: 'insensitive',
-            },
-          },
-          {
-            interest: {
-              name: {
-                contains: keyword,
-                mode: 'insensitive',
-              },
-            },
-          },
-          {
-            host: {
-              nickname: {
-                contains: keyword,
-                mode: 'insensitive',
-              },
-            },
-          },
-        ],
-      },
+      where: whereCondition,
+      skip: skip,
+      take: limit,
       include: {
         interest: true,
         host: {
@@ -526,14 +516,14 @@ export class MeetingsService {
       },
     });
 
-    return meetings.map((m) => {
+    const data: MeetingItemDto[] = meetings.map((m) => {
       const kstMeetingDate = new Date(
         m.meetingDate.getTime() + 9 * 60 * 60 * 1000,
       );
       const formattedDate = kstMeetingDate.toISOString().split('.')[0];
 
       return {
-        id: m.id,
+        meetingId: m.id,
         title: m.title,
         meetingImage: m.image,
         interestName: m.interest.name,
@@ -544,5 +534,8 @@ export class MeetingsService {
         hostNickname: m.host.nickname,
       };
     });
+
+    const pageMetaDto = new PageMetaDto(totalCount, page, limit);
+    return new PageDto(data, pageMetaDto);
   }
 }

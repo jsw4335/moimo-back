@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { MeetingsModule } from './modules/meetings/meetings.module';
 import { InterestsModule } from './modules/interests/interests.module';
 import { ChatsModule } from './modules/chats/chats.module';
+import { NotificationsModule } from './modules/notification/notifications.module';
+
 @Module({
   imports: [
     PrismaModule,
@@ -15,6 +17,7 @@ import { ChatsModule } from './modules/chats/chats.module';
     AuthModule,
     InterestsModule,
     ChatsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

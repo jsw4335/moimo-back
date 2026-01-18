@@ -366,8 +366,28 @@ export class UsersService {
     };
   }
 
-  async findById(id: number) {
-    return this.prisma.user.findUnique({ where: { id } });
+  async findById(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      return [];
+    }
+    const interests = await this.prisma.userInterest.findMany({
+      where: { userId },
+      include: { interest: true },
+    });
+    return {
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+      bio: user.bio,
+      profileImage: user.image,
+      interests: interests.map((i) => ({
+        id: i.interestId,
+        name: i.interest.name,
+      })),
+    };
   }
 
   async isNicknameAvailable(nickname: string): Promise<boolean> {

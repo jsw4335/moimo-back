@@ -13,6 +13,8 @@ import {
   UploadedFile,
   ConflictException,
   BadRequestException,
+  Param,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateExtraInfoDto } from './dto/update-extra-info.dto';
@@ -50,6 +52,11 @@ export class UsersController {
   @Get()
   async findAll() {
     return await this.usersService.findAll();
+  }
+
+  @Get(':userId')
+  async findUser(@Param('userId', ParseIntPipe) userId: number) {
+    return this.usersService.findById(userId);
   }
 
   @Post('login')

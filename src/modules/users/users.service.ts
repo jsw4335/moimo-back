@@ -102,6 +102,7 @@ export class UsersService {
     return await this.prisma.user.findMany();
   }
 
+  // 🔹 구글 로그인
   async loginWithGoogle(
     code: string,
     redirectUri: string,
@@ -130,65 +131,22 @@ export class UsersService {
         { headers: { Authorization: `Bearer ${googleAccessToken}` } },
       );
 
-      const { email, name } = userInfoRes.data;
+      const { email, name, id: googleSubId } = userInfoRes.data;
 
-      let user: User | null = await this.prisma.user.findUnique({
-        where: { email },
-      });
+      let user = await this.prisma.user.findUnique({ where: { email } });
 
       if (!user) {
         user = await this.prisma.user.create({
-          data: {
-            email,
-            nickname: name,
-          },
+          data: { email, nickname: name },
         });
 
         await this.prisma.socialAccount.create({
-          data: {
-            googleSubId: userInfoRes.data.id, // Google에서 받은 sub 값
-            userId: user.id,
-          },
+          data: { googleSubId, userId: user.id },
         });
       }
 
-      let refreshToken = user.refreshToken;
-      if (!refreshToken) {
-        refreshToken = this.jwtService.sign(
-          { id: user.id, email: user.email },
-          { secret: process.env.JWT_SECRET, expiresIn: '7d' },
-        );
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: { refreshToken },
-        });
-      } else {
-        try {
-          this.jwtService.verify(refreshToken, {
-            secret: process.env.JWT_SECRET,
-          });
-        } catch (err: any) {
-          if (err instanceof TokenExpiredError) {
-            refreshToken = this.jwtService.sign(
-              { id: user.id, email: user.email },
-              { secret: process.env.JWT_SECRET, expiresIn: '7d' },
-            );
-            await this.prisma.user.update({
-              where: { id: user.id },
-              data: { refreshToken },
-            });
-          } else {
-            throw new UnauthorizedException(
-              '유효하지 않은 Refresh 토큰입니다.',
-            );
-          }
-        }
-      }
-
-      const accessToken = this.jwtService.sign(
-        { id: user.id, email: user.email },
-        { secret: process.env.JWT_SECRET, expiresIn: '1h' },
-      );
+      const refreshToken = await this.issueOrRefreshToken(user);
+      const accessToken = this.issueAccessToken(user);
 
       return {
         accessToken,
@@ -199,18 +157,12 @@ export class UsersService {
           nickname: user.nickname,
         },
       };
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        throw new InternalServerErrorException(
-          `구글 로그인 실패: ${err.message}`,
-        );
-      }
-      throw new InternalServerErrorException(
-        '구글 로그인 중 알 수 없는 오류 발생',
-      );
+    } catch (err: any) {
+      throw new InternalServerErrorException(`구글 로그인 실패: ${err}`);
     }
   }
 
+  // 🔹 일반 로그인
   async login(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !user.password) {
@@ -226,41 +178,8 @@ export class UsersService {
       );
     }
 
-    let refreshToken = user.refreshToken;
-    if (!refreshToken) {
-      refreshToken = this.jwtService.sign(
-        { id: user.id, email: user.email },
-        { secret: process.env.JWT_SECRET, expiresIn: '7d' },
-      );
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { refreshToken },
-      });
-    } else {
-      try {
-        this.jwtService.verify(refreshToken, {
-          secret: process.env.JWT_SECRET,
-        });
-      } catch (err) {
-        if (err instanceof TokenExpiredError) {
-          refreshToken = this.jwtService.sign(
-            { id: user.id, email: user.email },
-            { secret: process.env.JWT_SECRET, expiresIn: '7d' },
-          );
-          await this.prisma.user.update({
-            where: { id: user.id },
-            data: { refreshToken },
-          });
-        } else {
-          throw new UnauthorizedException('유효하지 않은 Refresh 토큰입니다.');
-        }
-      }
-    }
-
-    const accessToken = this.jwtService.sign(
-      { id: user.id, email: user.email },
-      { secret: process.env.JWT_SECRET, expiresIn: '1h' },
-    );
+    const refreshToken = await this.issueOrRefreshToken(user);
+    const accessToken = this.issueAccessToken(user);
 
     return {
       accessToken,
@@ -606,5 +525,46 @@ export class UsersService {
       profileImage: user.image,
       interests,
     };
+  }
+
+  private async issueOrRefreshToken(user: User): Promise<string> {
+    let refreshToken = user.refreshToken;
+    if (!refreshToken) {
+      refreshToken = this.jwtService.sign(
+        { id: user.id, email: user.email },
+        { secret: process.env.JWT_SECRET, expiresIn: '7d' },
+      );
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { refreshToken },
+      });
+    } else {
+      try {
+        this.jwtService.verify(refreshToken, {
+          secret: process.env.JWT_SECRET,
+        });
+      } catch (err) {
+        if (err instanceof TokenExpiredError) {
+          refreshToken = this.jwtService.sign(
+            { id: user.id, email: user.email },
+            { secret: process.env.JWT_SECRET, expiresIn: '7d' },
+          );
+          await this.prisma.user.update({
+            where: { id: user.id },
+            data: { refreshToken },
+          });
+        } else {
+          throw new UnauthorizedException('유효하지 않은 Refresh 토큰입니다.');
+        }
+      }
+    }
+    return refreshToken;
+  }
+
+  private issueAccessToken(user: User): string {
+    return this.jwtService.sign(
+      { id: user.id, email: user.email },
+      { secret: process.env.JWT_SECRET, expiresIn: '1h' },
+    );
   }
 }

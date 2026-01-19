@@ -391,4 +391,56 @@ export class ParticipationsService {
       return;
     });
   }
+
+  async cancelRejection(
+    meetingId: number,
+    hostId: number,
+    pId: number,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const meeting = await tx.meeting.findUnique({
+        where: { id: meetingId },
+      });
+
+      if (!meeting) throw new NotFoundException('모임을 찾을 수 없습니다.');
+      if (meeting.hostId !== hostId) {
+        throw new ForbiddenException('호스트만 거절을 취소할 수 있습니다.');
+      }
+
+      const participation = await tx.participation.findUnique({
+        where: { id: pId },
+      });
+
+      if (
+        !participation ||
+        participation.status !== ParticipationStatus.REJECTED
+      ) {
+        throw new BadRequestException('취소 가능한 거절 상태가 아닙니다.');
+      }
+
+      await tx.participation.update({
+        where: { id: pId },
+        data: { status: ParticipationStatus.PENDING },
+      });
+
+      await tx.notification.deleteMany({
+        where: {
+          meetingId,
+          receiverId: participation.userId,
+          senderId: hostId,
+          type: NotificationType.PARTICIPATION_REJECTED,
+        },
+      });
+
+      await tx.notification.updateMany({
+        where: {
+          meetingId,
+          receiverId: hostId,
+          senderId: participation.userId,
+          type: NotificationType.PARTICIPATION_REQUEST,
+        },
+        data: { isRead: false },
+      });
+    });
+  }
 }

@@ -443,4 +443,57 @@ export class ParticipationsService {
       });
     });
   }
+
+  async getParticipants(meetingId: number) {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: {
+        host: {
+          select: {
+            id: true,
+            nickname: true,
+            bio: true,
+            image: true,
+          },
+        },
+        participations: {
+          where: { status: ParticipationStatus.ACCEPTED },
+          include: {
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                bio: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('해당 모임을 찾을 수 없습니다.');
+    }
+
+    const hostInfo = {
+      userId: meeting.host.id,
+      nickname: meeting.host.nickname,
+      bio: meeting.host.bio || '',
+      profileImage: meeting.host.image,
+      isHost: true,
+    };
+
+    const participantsInfo = meeting.participations
+      .filter((p) => p.user.id !== meeting.hostId)
+      .map((p) => ({
+        userId: p.user.id,
+        nickname: p.user.nickname,
+        bio: p.user.bio || '',
+        profileImage: p.user.image,
+        isHost: false,
+      }));
+
+    return [hostInfo, ...participantsInfo];
+  }
 }

@@ -101,6 +101,22 @@ export class MeetingsController {
     }
   }
 
+  @Get(':id/participants')
+  async getParticipants(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: express.Response,
+  ) {
+    try {
+      const result = await this.participationsService.getParticipants(id);
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        return res.status(error.getStatus()).json({ message: error.message });
+      }
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
+  }
+
   @Get('search')
   async search(
     @Query() searchDto: SearchMeetingDto,
